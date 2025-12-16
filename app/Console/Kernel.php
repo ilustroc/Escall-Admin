@@ -16,6 +16,7 @@ class Kernel extends ConsoleKernel
             ->hourlyAt(0)
             ->timezone('America/Lima')
             ->withoutOverlapping();
+            ->appendOutputTo(storage_path('logs/gestiones_sync.log'));
     }
 
     /**
