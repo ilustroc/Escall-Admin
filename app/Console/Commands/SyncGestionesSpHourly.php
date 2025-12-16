@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use PDO;
 
 class SyncGestionesSpHourly extends Command
@@ -11,18 +12,20 @@ class SyncGestionesSpHourly extends Command
     protected $signature = 'gestiones:sync-sp-hourly
                             {--dry-run : No inserta, solo muestra el rango}';
 
-    protected $description = 'Cada hora elimina e importa nuevamente las gestiones del día (rango diario).';
+    protected $description = 'Cada hora elimina e importa nuevamente las gestiones del día (fi=hoy, ff=mañana).';
 
     public function handle(): int
     {
-        $tz  = 'America/Lima';
-        $day = now()->timezone($tz)->toDateString(); // YYYY-mm-dd
+        $tz = 'America/Lima';
 
-        // Importaremos solo el día actual
-        $fi = $day;
-        $ff = $day;
+        // Día actual
+        $today = now()->timezone($tz)->toDateString(); // YYYY-mm-dd
 
-        $this->info("Sincronizando gestiones del dia: {$day}");
+        // SP requiere rango tipo: [fi, ff) => ff debe ser el día siguiente
+        $fi = $today;
+        $ff = Carbon::parse($today, $tz)->addDay()->toDateString();
+
+        $this->info("Sincronizando gestiones del dia: {$today}");
         $this->info("Rango SP: {$fi} -> {$ff}");
 
         if ($this->option('dry-run')) {
@@ -34,9 +37,9 @@ class SyncGestionesSpHourly extends Command
         @ini_set('memory_limit', '1024M');
         DB::connection()->disableQueryLog();
 
-        // 1) Borrar todas las gestiones del día en local
+        // 1) Borrar todas las gestiones del día en local (tu columna es DATE)
         $deleted = DB::table('gestiones')
-            ->where('fecha_gestion', $day)
+            ->where('fecha_gestion', $today)
             ->delete();
 
         $this->info("Eliminadas en local: {$deleted}");
@@ -63,9 +66,7 @@ class SyncGestionesSpHourly extends Command
 
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $mapped = $this->mapRow($row);
-            if (!$mapped) {
-                continue;
-            }
+            if (!$mapped) continue;
 
             $mapped['created_at'] = $now;
             $mapped['updated_at'] = $now;
@@ -92,7 +93,6 @@ class SyncGestionesSpHourly extends Command
 
     private function mapRow(array $r): ?array
     {
-        // Normaliza claves (minus, sin acentos/espacios/símbolos)
         $norm = function (string $k): string {
             $k = mb_strtolower($k, 'UTF-8');
             $k = strtr($k, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n']);
@@ -101,9 +101,7 @@ class SyncGestionesSpHourly extends Command
         };
 
         $x = [];
-        foreach ($r as $k => $v) {
-            $x[$norm($k)] = $v;
-        }
+        foreach ($r as $k => $v) $x[$norm($k)] = $v;
 
         $fechaGestion = $x['fecha_gestion'] ?? $x['fecha_de_gestion'] ?? null;
         $dni          = $x['dni'] ?? $x['documento'] ?? null;
@@ -118,17 +116,15 @@ class SyncGestionesSpHourly extends Command
         $status       = $this->defaultStatus($status);
         $tipificacion = $this->defaultTipificacion($tipificacion);
 
-        // Guardamos SOLO fecha (YYYY-mm-dd) porque tu columna fecha_gestion es DATE
+        // Guardamos SOLO fecha porque tu columna fecha_gestion es DATE
         $fg = $this->toDate($fechaGestion);
-        if (!$fg || !$dni) {
-            return null;
-        }
+        if (!$fg || !$dni) return null;
 
         $fp = $this->toDate($fechaPago);
 
         return [
             'fecha_gestion' => $fg,
-            'dni'           => trim((string) $dni),
+            'dni'           => trim((string)$dni),
             'telefono'      => $this->cut($telefono, 25),
             'status'        => $this->cut($status, 100),
             'tipificacion'  => $this->cut($tipificacion, 120),
@@ -141,24 +137,22 @@ class SyncGestionesSpHourly extends Command
 
     private function defaultStatus($v): string
     {
-        $s = trim((string) $v);
+        $s = trim((string)$v);
         return $s === '' ? 'NO CONTACTO' : $s;
     }
 
     private function defaultTipificacion($v): string
     {
-        $s = trim((string) $v);
+        $s = trim((string)$v);
         return $s === '' ? 'NO CONTESTA' : $s;
     }
 
     private function toDate($v): ?string
     {
         if ($v === null) return null;
+        $s = trim((string)$v);
 
-        $s = trim((string) $v);
-        if ($s === '' || $s === '0000-00-00' || $s === '00/00/0000' || $s === '00000000') {
-            return null;
-        }
+        if ($s === '' || $s === '0000-00-00' || $s === '00/00/0000' || $s === '00000000') return null;
 
         // yyyy-mm-dd o yyyy-mm-dd hh:mm:ss
         if (preg_match('/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2})?$/', $s)) {
@@ -167,9 +161,9 @@ class SyncGestionesSpHourly extends Command
 
         // dd/mm/yyyy
         if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $s, $m)) {
-            $y  = (int) $m[3];
-            $mo = (int) $m[2];
-            $d  = (int) $m[1];
+            $y  = (int)$m[3];
+            $mo = (int)$m[2];
+            $d  = (int)$m[1];
             if ($y < 1900 || $y > 2100) return null;
             if (!checkdate($mo, $d, $y)) return null;
             return sprintf('%04d-%02d-%02d', $y, $mo, $d);
@@ -181,19 +175,16 @@ class SyncGestionesSpHourly extends Command
     private function toIntNullable($v): ?int
     {
         if ($v === null) return null;
-
-        $s = trim((string) $v);
+        $s = trim((string)$v);
         if ($s === '' || $s === '?' || $s === '-') return null;
-
         $s = preg_replace('/[^\d\-]/', '', $s);
-        return ($s === '' || !is_numeric($s)) ? null : (int) $s;
+        return ($s === '' || !is_numeric($s)) ? null : (int)$s;
     }
 
     private function cut($v, int $n): ?string
     {
         if ($v === null) return null;
-
-        $s = trim((string) $v);
+        $s = trim((string)$v);
         return $s === '' ? null : mb_substr($s, 0, $n);
     }
 }
