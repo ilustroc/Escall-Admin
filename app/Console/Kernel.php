@@ -15,9 +15,10 @@ class Kernel extends ConsoleKernel
         $schedule->command('gestiones:sync-sp-hourly')
             ->hourlyAt(0)
             ->timezone('America/Lima')
-            ->withoutOverlapping();
+            ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/gestiones_sync.log'));
     }
+
 
     /**
      * Register the commands for the application.
