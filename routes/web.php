@@ -19,8 +19,8 @@ use App\Http\Controllers\Reportes\ReporteCarterasController;
  |--------------------------------------------------------------------------
  | Rutas accesibles sin iniciar sesión: mostrar formulario de login y procesarlo.
  */
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');         // Mostrar formulario de login
-Route::post('/login', [AuthController::class, 'doLogin'])->name('login.post');    // Procesar login
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [AuthController::class, 'doLogin'])->name('login.post');
 
 // Logout (requiere token CSRF, se mantiene fuera del GET)
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
