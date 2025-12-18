@@ -13,7 +13,7 @@
         <code class="break-words text-[11px] text-slate-700">
             CODIGO | DNI | TITULAR | CARTERA | ENTIDAD | COSECHA | SUB_CARTERA | PRODUCTO |
             SUB_PRODUCTO | HISTORICO | DEPARTAMENTO | DEUDA_TOTAL | DEUDA_CAPITAL |
-            CAMPAÑA | PORCENTAJE
+            CAMPANIA | PORCENTAJE
         </code>
     </div>
 

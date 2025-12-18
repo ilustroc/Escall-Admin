@@ -85,8 +85,10 @@ Route::middleware('auth')->group(function () {
     // XLSX
     Route::get('/reportes/carteras/export-data', [ReporteCarterasController::class, 'exportData'])
         ->name('reportes.carteras.exportData');
+    Route::get('/reportes/carteras/export-data-xlsx-fast', [ReporteCarterasController::class,'exportDataXlsxFast'])
+        ->name('reportes.carteras.exportDataXlsxFast');
 
-    // CSV rápido (streaming)
+    // CSV rápido
     Route::get('/reportes/carteras/export-data-csv', [ReporteCarterasController::class, 'exportDataCsv'])
         ->name('reportes.carteras.exportDataCsv');
 

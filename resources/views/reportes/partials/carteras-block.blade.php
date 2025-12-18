@@ -11,7 +11,7 @@
     <div class="flex flex-col gap-4 text-xs">
         {{-- XLSX (formateado) --}}
         <form method="GET"
-              action="{{ route('reportes.carteras.exportData') }}"
+              action="{{ route('reportes.carteras.exportDataXlsxFast') }}"
               class="flex flex-wrap items-end gap-3">
             <div>
                 <label class="block text-[11px] font-medium text-slate-700">
