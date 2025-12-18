@@ -44,41 +44,6 @@
             </div>
         </form>
 
-        {{-- CSV rápido --}}
-        <form method="GET"
-              action="{{ route('reportes.carteras.exportDataCsv') }}"
-              class="flex flex-wrap items-end gap-3">
-            <div>
-                <label class="block text-[11px] font-medium text-slate-700">
-                    Etiqueta del archivo (p.ej. OCTUBRE25)
-                </label>
-                <input type="text"
-                       name="tag"
-                       value="{{ $tag ?? '' }}"
-                       class="mt-1 block w-44 rounded-lg border border-slate-300 bg-white px-2 py-1.5 shadow-sm focus:border-red-500 focus:ring-red-500">
-            </div>
-
-            <div>
-                <label class="block text-[11px] font-medium text-slate-700">
-                    Mes de trabajo (YYYY-MM)
-                </label>
-                <input type="month"
-                       name="mes"
-                       value="{{ $mes ?? '' }}"
-                       class="mt-1 block w-40 rounded-lg border border-slate-300 bg-white px-2 py-1.5 shadow-sm focus:border-red-500 focus:ring-red-500">
-            </div>
-
-            <div class="space-y-1">
-                <button class="inline-flex items-center rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-slate-900"
-                        type="submit">
-                    Generar <strong class="ml-1 font-semibold">REPORTE DATA (CSV)</strong>
-                </button>
-                <div class="text-[11px] text-slate-500">
-                    Nombre: <code>REPORTE {{ $tag ?? '' }} ESCALL.csv</code> — más veloz para volúmenes grandes
-                </div>
-            </div>
-        </form>
-
         {{-- Data TEC desde Carteras --}}
         <form method="GET"
               action="{{ route('reportes.tec.data') }}"

@@ -83,14 +83,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/reportes/carteras', [ReporteCarterasController::class, 'index'])->name('reportes.carteras.index');
 
     // XLSX
-    Route::get('/reportes/carteras/export-data', [ReporteCarterasController::class, 'exportData'])
-        ->name('reportes.carteras.exportData');
     Route::get('/reportes/carteras/export-data-xlsx-fast', [ReporteCarterasController::class,'exportDataXlsxFast'])
         ->name('reportes.carteras.exportDataXlsxFast');
-
-    // CSV rápido
-    Route::get('/reportes/carteras/export-data-csv', [ReporteCarterasController::class, 'exportDataCsv'])
-        ->name('reportes.carteras.exportDataCsv');
 
     // Asignación TEC Center (placeholder)
     Route::get('/reportes/carteras/export-tec', [ReporteCarterasController::class, 'exportAsignacionTec'])
@@ -111,6 +105,4 @@ Route::middleware('auth')->group(function () {
      | Rutas que sirven vistas simples (reportes, sms).
      */
     Route::get('/sms', fn() => view('sms.index'))->name('sms.index');
-
 });
-
