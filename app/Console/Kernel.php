@@ -25,7 +25,7 @@ class Kernel extends ConsoleKernel
 
         // Todos los días a las 13:00: sync + correo
         $schedule->command('gestiones:sync-sp-hourly --send-mail')
-            ->dailyAt('13:00')
+            ->dailyAt('17:00')
             ->timezone($tz)
             ->name('gestiones_sync')
             ->withoutOverlapping()
