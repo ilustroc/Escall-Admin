@@ -12,13 +12,25 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        $tz = 'America/Lima';
+
+        // Cada hora (minuto 0), EXCEPTO a las 13:00
         $schedule->command('gestiones:sync-sp-hourly')
             ->hourlyAt(0)
-            ->timezone('America/Lima')
+            ->timezone($tz)
+            ->when(fn () => now()->timezone($tz)->hour !== 13)
+            ->name('gestiones_sync')
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/gestiones_sync.log'));
+
+        // Todos los días a las 13:00: sync + correo
+        $schedule->command('gestiones:sync-sp-hourly --send-mail')
+            ->dailyAt('13:00')
+            ->timezone($tz)
+            ->name('gestiones_sync')
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/gestiones_sync.log'));
     }
-
 
     /**
      * Register the commands for the application.

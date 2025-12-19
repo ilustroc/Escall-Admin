@@ -4,13 +4,20 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use App\Mail\ReporteGestionesImpulseMail;
+use App\Exports\ReporteImpulseXlsxFastExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use PDO;
 
 class SyncGestionesSpHourly extends Command
 {
     protected $signature = 'gestiones:sync-sp-hourly
-                            {--dry-run : No inserta, solo muestra el rango}';
+                            {--dry-run : No inserta, solo muestra el rango}
+                            {--send-mail : Envia correo al finalizar}';
 
     protected $description = 'Cada hora elimina e importa nuevamente las gestiones del día (fi=hoy, ff=mañana).';
 
@@ -48,7 +55,56 @@ class SyncGestionesSpHourly extends Command
         $inserted = $this->streamFromSpAndInsert($fi, $ff);
 
         $this->info("Insertadas: {$inserted}");
+
+        // 3) Enviar correo (simple)
+        if ($this->option('send-mail')) {
+            $this->sendDailyMail($today, $tz, $deleted, $inserted);
+        }
+
         return self::SUCCESS;
+    }
+
+    private function sendDailyMail(string $today, string $tz, int $deleted, int $inserted): void
+    {
+        $toRaw = env('GESTIONES_MAIL_TO');
+
+        $to = collect(explode(',', (string)$toRaw))
+            ->map(fn($e) => trim($e))
+            ->filter(fn($e) => $e !== '')
+            ->values()
+            ->all();
+
+        if (empty($to)) {
+            $this->warn("GESTIONES_MAIL_TO no está configurado. No se envía correo.");
+            return;
+        }
+
+        try {
+            $fi = $today;
+            $ff = $today;
+
+            $diaNombre  = Carbon::parse($fi, $tz)->format('Ymd');     // 20251218
+            $fechaTexto = Carbon::parse($fi, $tz)->format('d/m/Y');   // 18/12/2025
+
+            $file2 = "Gestiones Cartera Propia - 2 Escall {$diaNombre}.xlsx";
+            $file3 = "Gestiones Cartera Propia - 3 Escall {$diaNombre}.xlsx";
+
+            $bin2 = (new ReporteImpulseXlsxFastExport)->forRange($fi, $ff, 2)->toBinary();
+            $bin3 = (new ReporteImpulseXlsxFastExport)->forRange($fi, $ff, 3)->toBinary();
+
+            Mail::to($to)->send(new ReporteGestionesImpulseMail(
+                fechaTexto: $fechaTexto,
+                filename2: $file2,
+                filename3: $file3,
+                data2: $bin2,
+                data3: $bin3
+            ));
+
+            $this->info("Email IMPULSE enviado a " . implode(', ', $to) . " con adjuntos (PROPIA 2 y 3).");
+        } catch (\Throwable $e) {
+            $this->error("Falló el envío del correo: " . $e->getMessage());
+            Log::error('Impulse mail failed', ['error' => $e->getMessage()]);
+        }
     }
 
     private function streamFromSpAndInsert(string $fi, string $ff): int

@@ -7,8 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Carbon\Carbon;
-use App\Exports\ReporteImpulseExport;
-use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ReporteImpulseXlsxFastExport;
 
 class ReporteImpulseController extends Controller
 {
@@ -44,21 +43,15 @@ class ReporteImpulseController extends Controller
         if (!$this->isDate($ff)) $ff = $fi;
         if ($ff < $fi) $ff = $fi;
 
-        // Equipo: 2 o 3 (default 2 si no viene nada)
         $equipo = (int) $request->query('equipo', 2);
-        if (!in_array($equipo, [2,3])) {
-            $equipo = 2;
-        }
+        if (!in_array($equipo, [2,3])) $equipo = 2;
 
-        // Usamos la fecha de inicio para el nombre (como en tu ejemplo)
         $dia = Carbon::parse($fi)->format('Ymd');
-
         $filename = "Gestiones Cartera Propia - {$equipo} Escall {$dia}.xlsx";
 
-        return Excel::download(
-            new ReporteImpulseExport($fi, $ff, $equipo),
-            $filename
-        );
+        return (new ReporteImpulseXlsxFastExport)
+            ->forRange($fi, $ff, $equipo)
+            ->stream($filename);
     }
 
     // ----------------- helpers -----------------
