@@ -116,7 +116,6 @@ class ReporteKpInvestXlsxFastExport
 
     private function baseQuery(string $start, string $endEx)
     {
-        // Normalización para empatar aunque haya espacios/saltos de línea
         $normG = "REPLACE(REPLACE(UPPER(TRIM(g.tipificacion)), CHAR(13), ''), CHAR(10), '')";
         $normT = "REPLACE(REPLACE(UPPER(TRIM(tk.tipificacion)), CHAR(13), ''), CHAR(10), '')";
 
