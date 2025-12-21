@@ -31,7 +31,15 @@ class Kernel extends ConsoleKernel
             ->name('gestiones_sync_daily_mail')
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/gestiones_sync.log'));
-    }
+
+        //  Cada sábado a las 19:00: reporte semanal KP INVEST
+        $schedule->command('gestiones:mail-kpinvest-weekly')
+            ->weeklyOn(6, '19:00') // 6 = Saturday
+            ->timezone($tz)
+            ->name('gestiones_kpinvest_weekly_mail')
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/gestiones_sync.log'));
+        }
 
     /**
      * Register the commands for the application.

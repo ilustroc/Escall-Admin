@@ -66,7 +66,7 @@ class SyncGestionesSpHourly extends Command
 
     private function sendDailyMail(string $today, string $tz, int $deleted, int $inserted): void
     {
-        $toRaw = env('GESTIONES_MAIL_TO');
+        $toRaw = env('IMPULSEGO_MAIL_TO');
 
         $to = collect(explode(',', (string)$toRaw))
             ->map(fn($e) => trim($e))
@@ -75,7 +75,7 @@ class SyncGestionesSpHourly extends Command
             ->all();
 
         if (empty($to)) {
-            $this->warn("GESTIONES_MAIL_TO no está configurado. No se envía correo.");
+            $this->warn("IMPULSEGO_MAIL_TO no está configurado. No se envía correo.");
             return;
         }
 
