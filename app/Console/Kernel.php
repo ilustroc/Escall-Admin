@@ -14,20 +14,21 @@ class Kernel extends ConsoleKernel
     {
         $tz = 'America/Lima';
 
-        // Cada hora (minuto 0), EXCEPTO a las 13:00
+        // Cada hora (minuto 0), EXCEPTO a las 19:00
         $schedule->command('gestiones:sync-sp-hourly')
             ->hourlyAt(0)
             ->timezone($tz)
-            ->when(fn () => now()->timezone($tz)->hour !== 13)
+            ->when(fn () => now()->timezone($tz)->hour !== 19)
             ->name('gestiones_sync')
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/gestiones_sync.log'));
 
-        // Todos los días a las 13:00: sync + correo
+        // Todos los días a las 19:00: sync + correo
         $schedule->command('gestiones:sync-sp-hourly --send-mail')
             ->dailyAt('19:00')
-            ->timezone($tz)
-            ->name('gestiones_sync')
+            ->timezone('America/Lima')
+            ->days([1,2,3,4,5,6])
+            ->name('gestiones_sync_daily_mail')
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/gestiones_sync.log'));
     }
