@@ -38,7 +38,7 @@
            class="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm hover:border-red-500 hover:shadow-md transition">
             <div class="flex items-center justify-between gap-2">
                 <span class="font-medium text-slate-800 group-hover:text-red-700">
-                    Cargas
+                    Carga
                 </span>
                 <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-50 text-slate-700">
                     Gestionar
