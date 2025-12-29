@@ -113,7 +113,6 @@
     <div class="p-4 md:p-5">
       <div class="flex items-center justify-between">
         <div class="text-sm font-semibold text-slate-900">Tareas</div>
-        <div class="text-xs text-slate-500">Hora Lima</div>
       </div>
 
       <div class="mt-3 space-y-3">
