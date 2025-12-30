@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\ReporteKpInvestExport;
+use App\Exports\ReporteKpInvestXlsxFastExport;
 use App\Http\Controllers\Controller;
 
 class ReporteKpInvestController extends Controller
@@ -53,7 +53,7 @@ class ReporteKpInvestController extends Controller
 
         $filename = "Reporte KP INVEST {$sufijo}.xlsx";
 
-        return Excel::download(new ReporteKpInvestExport($fi, $ff), $filename);
+        return Excel::download(new ReporteKpInvestXlsxFastExport($fi, $ff), $filename);
     }
 
     private function isDate(?string $s): bool
