@@ -6,7 +6,6 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ReporteKpInvestXlsxFastExport;
 use App\Http\Controllers\Controller;
 
@@ -53,8 +52,12 @@ class ReporteKpInvestController extends Controller
 
         $filename = "Reporte KP INVEST {$sufijo}.xlsx";
 
-        return Excel::download(new ReporteKpInvestXlsxFastExport($fi, $ff), $filename);
+        $exporter = (new ReporteKpInvestXlsxFastExport())
+            ->forRange($fi, $ff);
+
+        return $exporter->stream($filename);
     }
+
 
     private function isDate(?string $s): bool
     {
