@@ -12,6 +12,7 @@ use App\Http\Controllers\Reportes\ReporteImpulseController;
 use App\Http\Controllers\Reportes\ReporteKpInvestController;
 use App\Http\Controllers\Reportes\ReporteTecCenterController;
 use App\Http\Controllers\Reportes\ReporteCarterasController;
+use App\Http\Controllers\Cargas\PagosController;
 
 /*
  |--------------------------------------------------------------------------
@@ -47,15 +48,26 @@ Route::middleware('auth')->group(function () {
         Route::get('data', [DataController::class, 'form'])->name('data.form');
         Route::post('data/upload', [DataController::class, 'upload'])->name('data.upload');
         Route::post('data/import-csv', [DataController::class, 'importarCsv'])->name('data.import.csv');
+        Route::post('data/templateCsv', [DataController::class, 'templateCsv'])->name('data.template.csv');
+        Route::get('data/templateCsv', [DataController::class, 'templateCsv'])->name('data.template.csv');
 
         // Gestiones (si las usas)
         Route::get('gestiones', [GestionesController::class, 'form'])->name('gestiones.form');
         Route::post('gestiones', [GestionesController::class, 'upload'])->name('gestiones.upload');
+        Route::post('gestiones/templateCsv', [GestionesController::class, 'templateCsv'])->name('gestiones.template.csv');
+        Route::get('gestiones/templateCsv', [GestionesController::class, 'templateCsv'])->name('gestiones.template.csv');
 
         // SP (si las usas)
         Route::get('sp', [GestionesSpController::class, 'form'])->name('sp.form');
         Route::get('sp/preview', [GestionesSpController::class, 'preview'])->name('sp.preview');
         Route::post('sp/import', [GestionesSpController::class, 'import'])->name('sp.import');
+        Route::post('sp/templateCsv', [GestionesSpController::class, 'templateCsv'])->name('sp.template.csv');
+        Route::get('sp/templateCsv', [GestionesSpController::class, 'templateCsv'])->name('sp.template.csv');
+
+        // PAGOS
+        Route::get('pagos',        [PagosController::class, 'form'])->name('pagos.form');
+        Route::get('pagos/lookup', [PagosController::class, 'lookup'])->name('pagos.lookup'); // AJAX
+        Route::post('pagos',       [PagosController::class, 'store'])->name('pagos.store');
     });
 
     /*

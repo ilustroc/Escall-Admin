@@ -7,6 +7,7 @@ use App\Http\Requests\DataUploadRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Response;
 use Illuminate\View\View;
 
 class DataController extends Controller
@@ -60,5 +61,31 @@ class DataController extends Controller
             'ok',
             "Carga XLSX completada. Procesadas: {$import->processed}, insertadas: {$import->inserted}, omitidas: {$import->skipped}, con error: {$import->failed}."
         );
+    }
+
+    public function templateCsv()
+    {
+        $headers = [
+            'CODIGO','DNI','TITULAR','CARTERA','ENTIDAD','COSECHA','SUB_CARTERA',
+            'PRODUCTO','SUB_PRODUCTO','HISTORICO','DEPARTAMENTO',
+            'DEUDA_TOTAL','DEUDA_CAPITAL','CAMPANIA','PORCENTAJE'
+        ];
+
+        $ejemplo = [[
+            '0000001587','00202080','LOJAS IPANAQUE PEDRO NICOLAS','TEC CENTER','COOP','CASTIGO','-',
+            'CREDI PYME','-','OCTUBRE . 2025','LIMA','1500.00','932.46','0.00','0.35'
+        ]];
+
+        $csv = fopen('php://temp','w+');
+        fputcsv($csv, $headers);
+        foreach ($ejemplo as $r) fputcsv($csv, $r);
+        rewind($csv);
+        $out = stream_get_contents($csv);
+        fclose($csv);
+
+        return Response::make($out, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="plantilla_data.csv"',
+        ]);
     }
 }

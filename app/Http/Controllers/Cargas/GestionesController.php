@@ -8,6 +8,7 @@ use App\Imports\GestionesImport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Response;
 
 class GestionesController extends Controller
 {
@@ -31,5 +32,30 @@ class GestionesController extends Controller
             'ok',
             "Carga XLSX completada. Procesadas: {$import->processed}, insertadas: {$import->inserted}, omitidas: {$import->skipped}, con error: {$import->failed}."
         );
+    }
+
+    public function templateCsv()
+    {
+        $headers = [
+            'fecha_gestion','dni','telefono','status','tipificacion',
+            'observacion','fecha_pago','monto_pago','nombre'
+        ];
+
+        $ejemplo = [[
+            '2025-10-24 09:30:00','00202080','977483410','NO CONTACTO','PROMESA DE PAGO',
+            'Cliente indica pagar 28/10','2025-10-28','150.00','JUAN RAMIREZ'
+        ]];
+
+        $csv = fopen('php://temp','w+');
+        fputcsv($csv, $headers);
+        foreach ($ejemplo as $r) fputcsv($csv, $r);
+        rewind($csv);
+        $out = stream_get_contents($csv);
+        fclose($csv);
+
+        return Response::make($out, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="plantilla_gestiones.csv"',
+        ]);
     }
 }
