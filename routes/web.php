@@ -6,115 +6,92 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Cargas\GestionesController;
 use App\Http\Controllers\Cargas\GestionesSpController;
 use App\Http\Controllers\Cargas\DataController;
+use App\Http\Controllers\Cargas\PagosController;
 use App\Http\Controllers\Tablas\GestionesMesController;
 use App\Http\Controllers\Tablas\GestionesSemanalController;
 use App\Http\Controllers\Reportes\ReporteImpulseController;
 use App\Http\Controllers\Reportes\ReporteKpInvestController;
 use App\Http\Controllers\Reportes\ReporteTecCenterController;
 use App\Http\Controllers\Reportes\ReporteCarterasController;
-use App\Http\Controllers\Cargas\PagosController;
 
 /*
- |--------------------------------------------------------------------------
- | Rutas públicas (Autenticación)
- |--------------------------------------------------------------------------
- | Rutas accesibles sin iniciar sesión: mostrar formulario de login y procesarlo.
- */
+|--------------------------------------------------------------------------
+| AUTENTICACIÓN
+|--------------------------------------------------------------------------
+*/
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'doLogin'])->name('login.post');
-
-// Logout (requiere token CSRF, se mantiene fuera del GET)
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+
 /*
- |--------------------------------------------------------------------------
- | Rutas protegidas por sesión
- |--------------------------------------------------------------------------
- */
+|--------------------------------------------------------------------------
+| PANEL ADMINISTRATIVO (Protegido)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth')->group(function () {
 
-    // Dashboard principal
+    // 1. DASHBOARD
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    /*
-     |--------------------------------------------------------------------------
-     | Rutas de "cargas"
-     |--------------------------------------------------------------------------
-     */
+    // 2. MÓDULO CARGAS (Data, Gestiones, SP, Pagos)
     Route::prefix('cargas')->name('cargas.')->group(function () {
+        // Vista Principal de Cargas
         Route::get('/', fn() => view('cargas.index'))->name('index');
 
-        // DATA (vista + uploads)
-        Route::get('data', [DataController::class, 'form'])->name('data.form');
-        Route::post('data/upload', [DataController::class, 'upload'])->name('data.upload');
-        Route::post('data/import-csv', [DataController::class, 'importarCsv'])->name('data.import.csv');
-        Route::post('data/templateCsv', [DataController::class, 'templateCsv'])->name('data.template.csv');
-        Route::get('data/templateCsv', [DataController::class, 'templateCsv'])->name('data.template.csv');
+        // Sub-módulo: Carga Data
+        Route::get('data',              [DataController::class, 'form'])->name('data.form');
+        Route::post('data/upload',      [DataController::class, 'upload'])->name('data.upload');
+        Route::post('data/import-csv',  [DataController::class, 'importarCsv'])->name('data.import.csv');
+        Route::match(['get', 'post'], 'data/templateCsv', [DataController::class, 'templateCsv'])->name('data.template.csv');
 
-        // Gestiones (si las usas)
-        Route::get('gestiones', [GestionesController::class, 'form'])->name('gestiones.form');
-        Route::post('gestiones', [GestionesController::class, 'upload'])->name('gestiones.upload');
-        Route::post('gestiones/templateCsv', [GestionesController::class, 'templateCsv'])->name('gestiones.template.csv');
-        Route::get('gestiones/templateCsv', [GestionesController::class, 'templateCsv'])->name('gestiones.template.csv');
+        // Sub-módulo: Carga Gestiones
+        Route::get('gestiones',         [GestionesController::class, 'form'])->name('gestiones.form');
+        Route::post('gestiones',        [GestionesController::class, 'upload'])->name('gestiones.upload');
+        Route::match(['get', 'post'], 'gestiones/templateCsv', [GestionesController::class, 'templateCsv'])->name('gestiones.template.csv');
 
-        // SP (si las usas)
-        Route::get('sp', [GestionesSpController::class, 'form'])->name('sp.form');
-        Route::get('sp/preview', [GestionesSpController::class, 'preview'])->name('sp.preview');
-        Route::post('sp/import', [GestionesSpController::class, 'import'])->name('sp.import');
-        Route::post('sp/templateCsv', [GestionesSpController::class, 'templateCsv'])->name('sp.template.csv');
-        Route::get('sp/templateCsv', [GestionesSpController::class, 'templateCsv'])->name('sp.template.csv');
+        // Sub-módulo: Carga SP
+        Route::get('sp',                [GestionesSpController::class, 'form'])->name('sp.form');
+        Route::get('sp/preview',        [GestionesSpController::class, 'preview'])->name('sp.preview');
+        Route::post('sp/import',        [GestionesSpController::class, 'import'])->name('sp.import');
+        Route::match(['get', 'post'], 'sp/templateCsv', [GestionesSpController::class, 'templateCsv'])->name('sp.template.csv');
 
-        // PAGOS
-        Route::get('pagos',        [PagosController::class, 'form'])->name('pagos.form');
-        Route::get('pagos/lookup', [PagosController::class, 'lookup'])->name('pagos.lookup'); // AJAX
-        Route::post('pagos',       [PagosController::class, 'store'])->name('pagos.store');
+        // Sub-módulo: Carga Pagos
+        Route::get('pagos',             [PagosController::class, 'form'])->name('pagos.form');
+        Route::get('pagos/lookup',      [PagosController::class, 'lookup'])->name('pagos.lookup');
+        Route::post('pagos',            [PagosController::class, 'store'])->name('pagos.store');
     });
 
-    /*
-     |--------------------------------------------------------------------------
-     | Tablas / reportes de gestiones
-     |--------------------------------------------------------------------------
-     */
-    Route::get('/tablas', [GestionesMesController::class, 'index'])->name('tablas.index');
-    Route::get('/tablas/gestiones-mes', [GestionesMesController::class, 'index'])->name('tablas.gestiones.mes');
-    Route::get('/tablas/semanales', [GestionesSemanalController::class, 'index'])->name('tablas.semanales');
+    // 3. MÓDULO TABLAS
+    Route::prefix('tablas')->name('tablas.')->group(function () {
+        Route::get('/',                 [GestionesMesController::class, 'index'])->name('index');
+        Route::get('/gestiones-mes',    [GestionesMesController::class, 'index'])->name('gestiones.mes');
+        Route::get('/semanales',        [GestionesSemanalController::class, 'index'])->name('semanales');
+    });
 
-    /*
-     |--------------------------------------------------------------------------
-     | Tablas / reportes de gestiones
-     |--------------------------------------------------------------------------
-     */
-    Route::get('/reportes', fn() => view('reportes.index'))->name('reportes.index');
-    Route::get('/reportes/impulse',        [ReporteImpulseController::class, 'index'])->name('reportes.impulse.index');
-    Route::get('/reportes/impulse/export', [ReporteImpulseController::class, 'export'])->name('reportes.impulse.export');
-    Route::get('/reportes/kp-invest',        [ReporteKpInvestController::class, 'index'])->name('reportes.kp.index');
-    Route::get('/reportes/kp-invest/export', [ReporteKpInvestController::class, 'export'])->name('reportes.kp.export');
-    Route::get('/reportes/tec-center',        [ReporteTecCenterController::class, 'index'])->name('reportes.tec.index');
-    Route::get('/reportes/tec-center/export', [ReporteTecCenterController::class, 'export'])->name('reportes.tec.export');
+    // 4. MÓDULO REPORTES
+    Route::prefix('reportes')->name('reportes.')->group(function () {
+        Route::get('/', fn() => view('reportes.index'))->name('index');
 
-    Route::get('/reportes/carteras', [ReporteCarterasController::class, 'index'])->name('reportes.carteras.index');
-
-    // XLSX
-    Route::get('/reportes/carteras/export-data-xlsx-fast', [ReporteCarterasController::class,'exportDataXlsxFast'])
-        ->name('reportes.carteras.exportDataXlsxFast');
-
-    // Asignación TEC Center (placeholder)
-    Route::get('/reportes/carteras/export-tec', [ReporteCarterasController::class, 'exportAsignacionTec'])
-        ->name('reportes.carteras.exportTec');
+        // Reportes Específicos
+        Route::get('/impulse',              [ReporteImpulseController::class, 'index'])->name('impulse.index');
+        Route::get('/impulse/export',       [ReporteImpulseController::class, 'export'])->name('impulse.export');
         
-    Route::get('/reportes/data-tec-center', [ReporteCarterasController::class, 'exportDataTecCenter'])
-        ->name('reportes.carteras.exportDataTecCenter');
-
-    Route::middleware('auth')->group(function () {
-        Route::get('/reportes/tec-center-data', [ReporteCarterasController::class, 'exportTecCenterData'])
-            ->name('reportes.tec.data');
-        });
+        Route::get('/kp-invest',            [ReporteKpInvestController::class, 'index'])->name('kp.index');
+        Route::get('/kp-invest/export',     [ReporteKpInvestController::class, 'export'])->name('kp.export');
         
-    /*
-     |--------------------------------------------------------------------------
-     | Vistas estáticas / utilitarias
-     |--------------------------------------------------------------------------
-     | Rutas que sirven vistas simples (reportes, sms).
-     */
+        Route::get('/tec-center',           [ReporteTecCenterController::class, 'index'])->name('tec.index');
+        Route::get('/tec-center/export',    [ReporteTecCenterController::class, 'export'])->name('tec.export');
+        Route::get('/tec-center-data',      [ReporteCarterasController::class, 'exportTecCenterData'])->name('tec.data'); // Movido aquí por lógica
+
+        // Reportes Consolidados / Carteras
+        Route::get('/carteras',                     [ReporteCarterasController::class, 'index'])->name('carteras.index');
+        Route::get('/carteras/export-data-xlsx',    [ReporteCarterasController::class, 'exportDataXlsxFast'])->name('carteras.exportDataXlsxFast');
+        Route::get('/carteras/export-tec',          [ReporteCarterasController::class, 'exportAsignacionTec'])->name('carteras.exportTec');
+        Route::get('/data-tec-center',              [ReporteCarterasController::class, 'exportDataTecCenter'])->name('carteras.exportDataTecCenter');
+    });
+
+    // 5. MÓDULO SMS
     Route::get('/sms', fn() => view('sms.index'))->name('sms.index');
+
 });

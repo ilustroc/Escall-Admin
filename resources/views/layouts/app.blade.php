@@ -1,235 +1,191 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" class="h-full bg-slate-50">
 <head>
     <meta charset="utf-8">
-    <title>@yield('title','ESCALL • Software')</title>
+    <title>@yield('title', 'ESCALL • Software')</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-
-    {{-- Tailwind CDN (sin Vite) --}}
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        /* Scrollbar personalizada para el sidebar */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none;  scrollbar-width: none; }
+    </style>
 </head>
+<body class="h-full font-sans antialiased text-slate-600">
 
-<body class="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
-    <div class="relative min-h-screen overflow-hidden flex flex-col">
+    <div class="flex h-screen overflow-hidden">
 
-        {{-- Fondo suave profesional --}}
-        <div class="pointer-events-none absolute inset-0">
-            <div class="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-indigo-200/35 blur-3xl"></div>
-            <div class="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-slate-200/70 blur-3xl"></div>
-            <div class="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:18px_18px] opacity-30"></div>
-        </div>
+        {{-- SIDEBAR (Escritorio y Móvil) --}}
+        <div id="mobile-overlay" class="fixed inset-0 z-20 bg-black/50 transition-opacity opacity-0 pointer-events-none lg:hidden" aria-hidden="true"></div>
 
-        {{-- HEADER --}}
-        <header class="relative sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur">
-            <div class="mx-auto max-w-7xl px-4">
-                <div class="flex items-center justify-between h-14">
-                    {{-- Marca --}}
-                    <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
-
-                        <div class="leading-tight">
-                            <div class="text-sm font-semibold tracking-tight">ESCALL PERÚ</div>
-                            <div class="text-[11px] text-slate-500">Panel Software</div>
-                        </div>
-                    </a>
-
-                    @auth
-                    {{-- Navegación desktop --}}
-                    <nav class="hidden md:flex items-center gap-1 text-sm">
-                        @php
-                            $linkBase = "px-3 py-2 rounded-xl font-medium transition";
-                            $linkOff  = "text-slate-600 hover:bg-slate-100 hover:text-slate-900";
-                            $linkOn   = "bg-slate-900 text-white shadow-sm";
-                        @endphp
-
-                        <a href="{{ route('dashboard') }}"
-                           class="{{ $linkBase }} {{ request()->routeIs('dashboard') ? $linkOn : $linkOff }}">
-                            Inicio
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 flex w-64 flex-col bg-slate-900 text-white transition-transform duration-300 -translate-x-full lg:static lg:translate-x-0">
+            
+            {{-- Logo --}}
+            <div class="flex h-16 items-center justify-center border-b border-slate-800 bg-slate-950 px-6">
+                <a href="{{ route('dashboard') }}">
+                    {{-- Aquí llamamos a la imagen --}}
+                    <img src="{{ asset('img/logotipo-escallperu.png') }}" 
+                        alt="Escall Perú" 
+                        class="h-10 w-auto object-contain"> 
+                </a>
+            </div>
+            
+            {{-- Menú de Navegación --}}
+            <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+                
+                {{-- Grupo: Principal --}}
+                <div>
+                    <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Principal</p>
+                    <div class="space-y-1">
+                        <a href="{{ route('dashboard') }}" 
+                           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors {{ request()->routeIs('dashboard') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                            Dashboard
                         </a>
-
-                        <a href="{{ route('cargas.index') }}"
-                           class="{{ $linkBase }} {{ request()->routeIs('cargas.*') ? $linkOn : $linkOff }}">
-                            Cargas
-                        </a>
-
-                        <a href="{{ route('tablas.index') }}"
-                           class="{{ $linkBase }} {{ request()->routeIs('tablas.*') ? $linkOn : $linkOff }}">
-                            Tablas
-                        </a>
-
-                        <a href="{{ route('reportes.index') }}"
-                           class="{{ $linkBase }} {{ request()->routeIs('reportes.*') ? $linkOn : $linkOff }}">
-                            Reportes
-                        </a>
-
-                        <a href="{{ route('sms.index') }}"
-                           class="{{ $linkBase }} {{ request()->routeIs('sms.*') ? $linkOn : $linkOff }}">
-                            SMS
-                        </a>
-                    </nav>
-
-                    {{-- Acciones --}}
-                    <div class="flex items-center gap-2">
-                        {{-- Botón menú móvil --}}
-                        <button id="btnMobile"
-                                class="md:hidden inline-flex items-center justify-center h-9 w-9 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                                aria-label="Abrir menú">
-                            ☰
-                        </button>
-
-                        {{-- User chip (opcional, sin romper si no existe name) --}}
-                        <div class="hidden md:flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700">
-                            <span class="max-w-[140px] truncate">
-                                {{ auth()->user()->name ?? 'Usuario' }}
-                            </span>
-                        </div>
-
-                        <form method="POST" action="{{ route('logout') }}" class="hidden md:block">
-                            @csrf
-                            <button type="submit"
-                                    class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-                                Salir
-                            </button>
-                        </form>
                     </div>
-                    @endauth
                 </div>
 
-                {{-- Navegación móvil --}}
-                @auth
-                <nav id="navMobile" class="md:hidden hidden pb-3">
-                    <div class="mt-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-                        @php
-                            $mBase = "block rounded-xl px-3 py-2 text-sm font-medium transition";
-                            $mOff  = "text-slate-700 hover:bg-slate-50";
-                            $mOn   = "bg-slate-900 text-white";
-                        @endphp
-
-                        <a href="{{ route('dashboard') }}"
-                           class="{{ $mBase }} {{ request()->routeIs('dashboard') ? $mOn : $mOff }}">
-                            Inicio
-                        </a>
-
-                        <a href="{{ route('cargas.index') }}"
-                           class="{{ $mBase }} {{ request()->routeIs('cargas.*') ? $mOn : $mOff }}">
+                {{-- Grupo: Operativo --}}
+                <div>
+                    <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Operativo</p>
+                    <div class="space-y-1">
+                        <a href="{{ route('cargas.index') }}" 
+                           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors {{ request()->routeIs('cargas.*') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                             Cargas
                         </a>
+                        <a href="{{ route('sms.index') }}" 
+                           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors {{ request()->routeIs('sms.*') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                            Mensajería SMS
+                        </a>
+                    </div>
+                </div>
 
-                        <a href="{{ route('tablas.index') }}"
-                           class="{{ $mBase }} {{ request()->routeIs('tablas.*') ? $mOn : $mOff }}">
+                {{-- Grupo: Analítica --}}
+                <div>
+                    <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Analítica</p>
+                    <div class="space-y-1">
+                        <a href="{{ route('tablas.index') }}" 
+                           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors {{ request()->routeIs('tablas.*') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                             Tablas
                         </a>
-
-                        <a href="{{ route('reportes.index') }}"
-                           class="{{ $mBase }} {{ request()->routeIs('reportes.*') ? $mOn : $mOff }}">
+                        <a href="{{ route('reportes.index') }}" 
+                           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors {{ request()->routeIs('reportes.*') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             Reportes
                         </a>
-
-                        <a href="{{ route('sms.index') }}"
-                           class="{{ $mBase }} {{ request()->routeIs('sms.*') ? $mOn : $mOff }}">
-                            SMS
-                        </a>
-
-                        <div class="mt-2 border-t border-slate-200 pt-2">
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit"
-                                        class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                                    Salir
-                                </button>
-                            </form>
-                        </div>
                     </div>
-                </nav>
-                @endauth
+                </div>
+
+            </nav>
+
+            {{-- Footer Sidebar --}}
+            <div class="border-t border-slate-800 p-4">
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Cerrar Sesión
+                    </button>
+                </form>
             </div>
-        </header>
+        </aside>
 
-        {{-- CONTENIDO --}}
-        <main class="relative flex-1">
-            <div class="mx-auto max-w-7xl px-4 py-5 space-y-4">
+        {{-- CONTENIDO PRINCIPAL --}}
+        <div class="flex flex-1 flex-col overflow-hidden bg-slate-50">
+            
+            {{-- Header Superior --}}
+            <header class="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm">
+                <button id="mobile-menu-btn" class="text-slate-500 hover:text-slate-700 lg:hidden focus:outline-none">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
 
-                {{-- Breadcrumb --}}
-                @hasSection('crumb')
-                    <nav class="text-xs text-slate-500" aria-label="Breadcrumb">
-                        <ol class="flex items-center gap-1">
-                            <li>
-                                <a href="{{ route('dashboard') }}" class="hover:text-slate-700">
-                                    Inicio
-                                </a>
-                            </li>
-                            <li class="text-slate-400">/</li>
-                            <li class="truncate">
-                                @yield('crumb')
-                            </li>
-                        </ol>
-                    </nav>
-                @endif
+                <div class="flex flex-col">
+                    <h1 class="text-lg font-bold text-slate-800 leading-tight">
+                        @yield('header_title', 'Panel de Control')
+                    </h1>
+                    @hasSection('crumb')
+                        <span class="text-xs text-slate-400">@yield('crumb')</span>
+                    @endif
+                </div>
 
-                {{-- Flash messages --}}
+                <div class="flex items-center gap-4">
+                    <div class="hidden text-right md:block">
+                        <div class="text-sm font-semibold text-slate-800">{{ auth()->user()->name ?? 'Administrador' }}</div>
+                        <div class="text-xs text-slate-500">{{ date('d M, Y') }}</div>
+                    </div>
+                    <div class="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold border border-slate-300">
+                        {{ substr(auth()->user()->name ?? 'A', 0, 1) }}
+                    </div>
+                </div>
+            </header>
+
+            {{-- Area de Contenido Scrollable --}}
+            <main class="flex-1 overflow-y-auto p-4 md:p-8">
+                
+                {{-- Alertas / Flash Messages --}}
                 @if(session('ok') || session('warn') || session('error') || $errors->any())
-                    <div class="space-y-2">
-                        @if(session('ok'))
-                            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                                {{ session('ok') }}
-                            </div>
-                        @endif
+                <div class="mb-6 space-y-3">
+                    @if(session('ok'))
+                        <div class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-sm">
+                            <span class="font-bold">✓ Éxito:</span> {{ session('ok') }}
+                        </div>
+                    @endif
 
-                        @if(session('warn'))
-                            <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                                {{ session('warn') }}
-                            </div>
-                        @endif
+                    @if(session('warn'))
+                         <div class="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm">
+                            <span class="font-bold">⚠ Atención:</span> {{ session('warn') }}
+                        </div>
+                    @endif
 
-                        @if(session('error'))
-                            <div class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 shadow-sm">
-                                <span class="font-semibold">Aviso:</span> {{ session('error') }}
-                            </div>
-                        @endif
-
-                        @if($errors->any())
-                            <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                                <div class="font-semibold mb-1">Errores:</div>
-                                <ul class="list-disc pl-4 space-y-0.5">
-                                    @foreach($errors->all() as $e)
-                                        <li>{{ $e }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        @endif
-                    </div>
+                    @if(session('error'))
+                        <div class="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm">
+                            <span class="font-bold">✕ Error:</span> {{ session('error') }}
+                        </div>
+                    @endif
+                    
+                    @if($errors->any())
+                        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                            <ul class="list-disc pl-5">
+                                @foreach($errors->all() as $e) <li>{{ $e }}</li> @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                </div>
                 @endif
 
-                {{-- Card principal --}}
-                <section class="rounded-2xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur">
-                    <div class="p-4 md:p-6">
-                        @yield('content')
-                    </div>
-                </section>
-            </div>
-        </main>
+                {{-- Inyección de Contenido --}}
+                <div class="animate-fade-in-up">
+                    @yield('content')
+                </div>
 
-        {{-- FOOTER --}}
-        <footer class="relative border-t border-slate-200 bg-white/70 backdrop-blur">
-            <div class="mx-auto max-w-7xl px-4 py-3 text-[11px] text-slate-500 flex justify-between items-center">
-                <span>© {{ date('Y') }} Escall Perú</span>
-                <span class="hidden sm:inline">Panel de Software</span>
-            </div>
-        </footer>
-
-        {{-- Script menú móvil --}}
-        <script>
-            (function () {
-                const btn = document.getElementById('btnMobile');
-                const nav = document.getElementById('navMobile');
-                if (!btn || !nav) return;
-
-                btn.addEventListener('click', () => {
-                    nav.classList.toggle('hidden');
-                });
-            })();
-        </script>
+            </main>
+        </div>
     </div>
+
+    {{-- Script para menú móvil --}}
+    <script>
+        const btn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('mobile-overlay');
+
+        function toggleMenu() {
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+            if (isClosed) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        btn.addEventListener('click', toggleMenu);
+        overlay.addEventListener('click', toggleMenu);
+    </script>
 </body>
 </html>
