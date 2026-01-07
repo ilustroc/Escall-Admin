@@ -1,0 +1,26 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-l0sNRNKZ.js",
+    "name": "app",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-CAiCLEjY.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/pagos.js": {
+    "file": "assets/pagos-DqaJwgXu.js",
+    "name": "pagos",
+    "src": "resources/js/pagos.js",
+    "isEntry": true
+  },
+  "resources/js/tablas.js": {
+    "file": "assets/tablas-Bt4aHNPu.js",
+    "name": "tablas",
+    "src": "resources/js/tablas.js",
+    "isEntry": true
+  }
+}
