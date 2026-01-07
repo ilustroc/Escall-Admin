@@ -6,8 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Cargas\GestionesSpController;
 use App\Http\Controllers\Cargas\DataController;
 use App\Http\Controllers\Cargas\PagosController;
-use App\Http\Controllers\Tablas\GestionesMesController;
-use App\Http\Controllers\Tablas\GestionesSemanalController;
+use App\Http\Controllers\Tablas\TablasController;
 use App\Http\Controllers\Reportes\ReporteImpulseController;
 use App\Http\Controllers\Reportes\ReporteKpInvestController;
 use App\Http\Controllers\Reportes\ReporteCarterasController;
@@ -57,9 +56,7 @@ Route::middleware('auth')->group(function () {
 
     // 3. MÓDULO TABLAS
     Route::prefix('tablas')->name('tablas.')->group(function () {
-        Route::get('/',                 [GestionesMesController::class, 'index'])->name('index');
-        Route::get('/gestiones-mes',    [GestionesMesController::class, 'index'])->name('gestiones.mes');
-        Route::get('/semanales',        [GestionesSemanalController::class, 'index'])->name('semanales');
+        Route::get('/', [TablasController::class, 'index'])->name('index');
     });
 
     // 4. MÓDULO REPORTES

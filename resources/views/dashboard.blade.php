@@ -104,7 +104,7 @@
                     </div>
                 </a>
 
-                {{-- Botón Pequeño: Tablas --}}
+                {{-- Tablas --}}
                 <a href="{{ route('tablas.index') }}" class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm hover:bg-slate-50 transition">
                     <div class="flex items-center gap-3">
                         <div class="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
@@ -115,7 +115,7 @@
                     <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 </a>
 
-                {{-- Botón Pequeño: Reportes --}}
+                {{-- Reportes --}}
                 <a href="{{ route('reportes.index') }}" class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm hover:bg-slate-50 transition">
                     <div class="flex items-center gap-3">
                         <div class="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">

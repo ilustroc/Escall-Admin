@@ -126,7 +126,6 @@ class GestionesSemanalController extends Controller
 
     private function labelDia(Carbon $d): string
     {
-        // lunes 20, martes 21...
         $map = ['Monday'=>'lunes', 'Tuesday'=>'martes', 'Wednesday'=>'miércoles', 'Thursday'=>'jueves', 'Friday'=>'viernes'];
         $name = $map[$d->englishDayOfWeek] ?? $d->format('D');
         return $name . ' ' . $d->format('j');
