@@ -1,28 +1,28 @@
 @extends('layouts.app')
-@section('title','Reportes')
-@section('crumb','Reportes')
+
+@section('title', 'Generar Reportes')
+@section('header_title', 'Centro de Reportes')
+@section('crumb', 'Analítica / Reportes')
 
 @section('content')
     <div class="space-y-6">
-        <header class="space-y-1">
-            <h1 class="text-lg font-semibold text-slate-800">
-                Generar Reportes
-            </h1>
-            <p class="text-xs text-slate-500">
-                Aquí puedes consultar y exportar todos los reportes del software en una sola vista.
-            </p>
-        </header>
+        
+        {{-- SECCIÓN 1: REPORTES OPERATIVOS (Grid de 2 columnas) --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {{-- Reporte Impulse --}}
+            @include('reportes.partials.impulse-block')
 
-        {{-- Impulse --}}
-        @include('reportes.partials.impulse-block')
+            {{-- Reporte KP Invest --}}
+            @include('reportes.partials.kp-block')
 
-        {{-- KP INVEST --}}
-        @include('reportes.partials.kp-block')
+        </div>
 
-        {{-- TEC CENTER --}}
-        @include('reportes.partials.tec-block')
+        {{-- SECCIÓN 2: REPORTES MASIVOS / CARTERA (Ancho completo) --}}
+        <div class="pt-4 border-t border-slate-200">
+            <h3 class="mb-4 text-sm font-bold text-slate-500 uppercase tracking-wider">Reportes Consolidados</h3>
+            @include('reportes.partials.carteras-block')
+        </div>
 
-        {{-- CARTERAS --}}
-        @include('reportes.partials.carteras-block')
     </div>
 @endsection

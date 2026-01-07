@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Cargas\GestionesController;
 use App\Http\Controllers\Cargas\GestionesSpController;
 use App\Http\Controllers\Cargas\DataController;
 use App\Http\Controllers\Cargas\PagosController;
@@ -11,7 +10,6 @@ use App\Http\Controllers\Tablas\GestionesMesController;
 use App\Http\Controllers\Tablas\GestionesSemanalController;
 use App\Http\Controllers\Reportes\ReporteImpulseController;
 use App\Http\Controllers\Reportes\ReporteKpInvestController;
-use App\Http\Controllers\Reportes\ReporteTecCenterController;
 use App\Http\Controllers\Reportes\ReporteCarterasController;
 
 /*
@@ -45,11 +43,6 @@ Route::middleware('auth')->group(function () {
         Route::post('data/import-csv',  [DataController::class, 'importarCsv'])->name('data.import.csv');
         Route::match(['get', 'post'], 'data/templateCsv', [DataController::class, 'templateCsv'])->name('data.template.csv');
 
-        // Sub-módulo: Carga Gestiones
-        Route::get('gestiones',         [GestionesController::class, 'form'])->name('gestiones.form');
-        Route::post('gestiones',        [GestionesController::class, 'upload'])->name('gestiones.upload');
-        Route::match(['get', 'post'], 'gestiones/templateCsv', [GestionesController::class, 'templateCsv'])->name('gestiones.template.csv');
-
         // Sub-módulo: Carga SP
         Route::get('sp',                [GestionesSpController::class, 'form'])->name('sp.form');
         Route::get('sp/preview',        [GestionesSpController::class, 'preview'])->name('sp.preview');
@@ -80,8 +73,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/kp-invest',            [ReporteKpInvestController::class, 'index'])->name('kp.index');
         Route::get('/kp-invest/export',     [ReporteKpInvestController::class, 'export'])->name('kp.export');
         
-        Route::get('/tec-center',           [ReporteTecCenterController::class, 'index'])->name('tec.index');
-        Route::get('/tec-center/export',    [ReporteTecCenterController::class, 'export'])->name('tec.export');
         Route::get('/tec-center-data',      [ReporteCarterasController::class, 'exportTecCenterData'])->name('tec.data'); // Movido aquí por lógica
 
         // Reportes Consolidados / Carteras

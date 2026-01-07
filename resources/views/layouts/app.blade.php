@@ -12,6 +12,7 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none;  scrollbar-width: none; }
     </style>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="h-full font-sans antialiased text-slate-600">
 
@@ -51,16 +52,71 @@
                 <div>
                     <p class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Operativo</p>
                     <div class="space-y-1">
-                        <a href="{{ route('cargas.index') }}" 
-                           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors {{ request()->routeIs('cargas.*') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
-                           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                            Cargas
-                        </a>
+                        
+                        {{-- ACORDEÓN CARGAS --}}
+                        <div x-data="{ open: {{ request()->routeIs('cargas.*') ? 'true' : 'false' }} }">
+                            
+                            {{-- Botón Principal del Acordeón --}}
+                            <button @click="open = !open" 
+                                    type="button"
+                                    class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors 
+                                    {{ request()->routeIs('cargas.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                                
+                                <div class="flex items-center gap-3">
+                                    {{-- Icono Upload --}}
+                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <span>Cargas</span>
+                                </div>
+
+                                {{-- Flecha Rotatoria --}}
+                                <svg class="h-4 w-4 transition-transform duration-200" 
+                                    :class="open ? 'rotate-90' : ''" 
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+
+                            {{-- Sub-menú (Items) --}}
+                            <div x-show="open" 
+                                x-cloak 
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="transform opacity-0 scale-95"
+                                x-transition:enter-end="transform opacity-100 scale-100"
+                                class="mt-1 space-y-1 pl-11">
+                                
+                                {{-- Item: Gestiones --}}
+                                <a href="{{ route('cargas.index', ['tab' => 'gestiones']) }}" 
+                                class="block rounded-lg px-3 py-2 text-xs font-medium transition-colors 
+                                {{ request('tab') == 'gestiones' || !request('tab') && request()->routeIs('cargas.index') ? 'text-white bg-blue-600' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
+                                    Gestiones
+                                </a>
+
+                                {{-- Item: Cartera --}}
+                                <a href="{{ route('cargas.index', ['tab' => 'data']) }}" 
+                                class="block rounded-lg px-3 py-2 text-xs font-medium transition-colors 
+                                {{ request('tab') == 'data' ? 'text-white bg-blue-600' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
+                                    Carga Cartera
+                                </a>
+
+                                {{-- Item: Pagos --}}
+                                <a href="{{ route('cargas.index', ['tab' => 'pagos']) }}" 
+                                class="block rounded-lg px-3 py-2 text-xs font-medium transition-colors 
+                                {{ request('tab') == 'pagos' ? 'text-white bg-blue-600' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
+                                    Carga Pagos
+                                </a>
+                            </div>
+                        </div>
+                        {{-- FIN ACORDEÓN --}}
+
+                        {{-- Item: Mensajería SMS (Se mantiene igual) --}}
                         <a href="{{ route('sms.index') }}" 
-                           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors {{ request()->routeIs('sms.*') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
-                           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                        class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors {{ request()->routeIs('sms.*') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
                             Mensajería SMS
                         </a>
+
                     </div>
                 </div>
 
