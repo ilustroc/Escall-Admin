@@ -28,10 +28,11 @@ class GestionesSpController extends Controller
     {
         [$fi, $ff] = $this->validateDates($r);
 
-        // Trae primeras 100 filas SIN “cartera”
         [$rows, $total] = $this->fetchFromSpPreview($fi, $ff, 100);
 
         return view('cargas.index', [
+            'tab'       => 'gestiones',
+            'modo'      => 'sp',            
             'spFi'      => $fi,
             'spFf'      => $ff,
             'spPreview' => $rows,

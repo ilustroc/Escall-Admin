@@ -1,3 +1,12 @@
+@php
+    $tab  = $tab  ?? request('tab','gestiones');
+    $modo = $modo ?? request('modo','excel');
+
+    if(isset($spPreview)) {
+        $tab = 'gestiones';
+        $modo = 'sp';
+    }
+@endphp
 @extends('layouts.app')
 
 @section('title', 'Gestiones por Asesor')
@@ -62,8 +71,11 @@
                     <thead>
                         <tr>
                             <th class="sticky-left">AGENTE</th>
-                            @foreach($labels as $lbl)
-                                <th class="text-right">{{ $lbl }}</th>
+                            @foreach($days as $day)
+                                <th class="text-right">
+                                    {{-- 'j' muestra el día sin ceros iniciales (1, 2, 3...) --}}
+                                    {{ \Carbon\Carbon::parse($day)->format('j') }}
+                                </th>
                             @endforeach
                             <th class="text-right total-col">TOTAL</th>
                         </tr>
