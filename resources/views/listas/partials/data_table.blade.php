@@ -29,10 +29,12 @@
                             
                             {{-- Botón Eliminar --}}
                             <form action="{{ route('listas.destroy') }}" method="POST" onsubmit="return confirm('¿Eliminar de cartera?')">
-                                @csrf @method('DELETE')
-                                <input type="hidden" name="id" value="{{ $item->id ?? $item->dni }}">
-                                <input type="hidden" name="dni_ref" value="{{ $item->dni }}">
+                                @csrf
+                                @method('DELETE')
+
+                                <input type="hidden" name="id" value="{{ $item->codigo }}">
                                 <input type="hidden" name="type" value="data">
+
                                 <button type="submit" class="p-1 rounded text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors" title="Eliminar">
                                     <x-heroicon-o-trash class="h-4 w-4" />
                                 </button>

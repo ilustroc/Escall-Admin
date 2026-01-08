@@ -55,8 +55,8 @@ class ListasController extends Controller
                 foreach ($rows as $row) {
                     
                     // AQUI ESTA LA MAGIA: Ocultamos lo que no queremos
-                    $row->makeHidden(['id', 'created_at', 'updated_at']);
-                    
+                    $row->makeHidden(['created_at', 'updated_at']); // (id no existe)
+
                     // Convertimos el objeto a array (Clave => Valor)
                     $data = $row->toArray();
 
@@ -158,8 +158,10 @@ class ListasController extends Controller
             }
             elseif ($type == 'data') {
                 // Buscamos por ID o respaldo por DNI
-                $d = Data::where('id', $id)->orWhere('dni', $request->input('dni_original'))->firstOrFail();
-                $d->update($request->only(['cartera', 'cosecha', 'nombre', 'deuda_capital']));
+                $codigo = $request->input('id'); // aquí "id" será el codigo
+                $d = Data::findOrFail($codigo);
+
+                $d->update($request->only(['cartera', 'cosecha', 'titular', 'deuda_capital']));
             }
 
             return back()->with('ok', 'Registro actualizado correctamente.');
@@ -176,12 +178,7 @@ class ListasController extends Controller
 
         if ($type == 'pago') Pago::destroy($id);
         if ($type == 'gestion') Gestion::destroy($id);
-        if ($type == 'data') {
-             // Si Data no tiene ID, intentar borrar por DNI (cuidado con duplicados)
-             $d = Data::find($id);
-             if($d) $d->delete();
-             else Data::where('dni', $request->input('dni_ref'))->delete();
-        }
+        if ($type == 'data') { Data::destroy($id);}
 
         return back()->with('ok', 'Registro eliminado.');
     }

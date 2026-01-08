@@ -11,10 +11,16 @@ class Data extends Model
 
     protected $table = 'data';
 
-    protected $fillable = [
-        'dni', 'titular', 'cartera', 'cosecha', 'entidad', 
-        'departamento', 'rango', 'capital', 'deuda_capital', 'producto'
-    ];
+    protected $primaryKey = 'codigo';
+    public $incrementing = false;
+    protected $keyType = 'string';
 
-    public $timestamps = false;
+    public $timestamps = true;
+
+    protected $fillable = [
+        'codigo','dni','titular','cartera','entidad',
+        'cosecha','sub_cartera','producto','sub_producto',
+        'historico','departamento','deuda_total','deuda_capital',
+        'campania','porcentaje',
+    ];
 }
