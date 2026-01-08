@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ListasController;
 use App\Http\Controllers\Cargas\GestionesSpController;
 use App\Http\Controllers\Cargas\DataController;
 use App\Http\Controllers\Cargas\PagosController;
@@ -79,7 +80,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/data-tec-center',              [ReporteCarterasController::class, 'exportDataTecCenter'])->name('carteras.exportDataTecCenter');
     });
 
-    // 5. MÓDULO SMS
-    Route::get('/sms', fn() => view('sms.index'))->name('sms.index');
-
+    // 5. MÓDULO LISTAS (CRUD)
+    Route::prefix('listas')->name('listas.')->group(function () {
+        Route::get('/', [ListasController::class, 'index'])->name('index');
+        Route::put('/update', [ListasController::class, 'update'])->name('update');
+        Route::delete('/delete', [ListasController::class, 'destroy'])->name('destroy');
+        Route::get('/export', [ListasController::class, 'export'])->name('export');
+    });
 });
