@@ -18,7 +18,7 @@
             
             <form method="POST" action="{{ route('listas.update') }}">
                 @csrf @method('PUT')
-                <input type="hidden" name="id" :value="item.id">
+                <input type="hidden" name="id" :value="type === 'data' ? item.codigo : item.id">
                 <input type="hidden" name="dni_original" :value="item.dni">
                 <input type="hidden" name="type" :value="type">
 
@@ -54,7 +54,7 @@
                     {{-- DATA --}}
                     <template x-if="type == 'data'">
                         <div class="contents">
-                            <div class="md:col-span-2"><label class="block font-bold mb-1">Nombre</label><input name="nombre" class="w-full rounded border-slate-300" :value="item.nombre"></div>
+                            <div class="md:col-span-2"><label class="block font-bold mb-1">Nombre</label><input name="titular" class="w-full rounded border-slate-300" :value="item.titular"></div>
                             <div><label class="block font-bold mb-1">Cartera</label><select name="cartera" class="w-full rounded border-slate-300"><option :value="item.cartera" x-text="item.cartera"></option>@foreach($listas['carteras'] ?? [] as $c) <option value="{{ $c }}">{{ $c }}</option> @endforeach</select></div>
                             <div><label class="block font-bold mb-1">Cosecha</label><select name="cosecha" class="w-full rounded border-slate-300"><option :value="item.cosecha" x-text="item.cosecha"></option>@foreach($listas['cosechas'] ?? [] as $c) <option value="{{ $c }}">{{ $c }}</option> @endforeach</select></div>
                             <div><label class="block font-bold mb-1">Deuda</label><input name="deuda_capital" type="number" step="0.01" class="w-full rounded border-slate-300" :value="item.deuda_capital"></div>
