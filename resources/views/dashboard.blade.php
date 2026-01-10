@@ -51,7 +51,7 @@
                 </div>
             </div>
 
-            {{-- KPI: Estado / Última Carga --}}
+            {{-- KPI --}}
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden">
                 <div class="relative z-10">
                     <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Última Actualización</p>
