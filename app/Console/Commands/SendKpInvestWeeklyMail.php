@@ -23,15 +23,9 @@ class SendKpInvestWeeklyMail extends Command
         $fi = $now->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
         $ff = $now->toDateString();
 
-        $toRaw = env('KPINVEST_MAIL_TO', '');
-        $tos = collect(explode(',', $toRaw))
-            ->map(fn($e) => trim($e))
-            ->filter()
-            ->values()
-            ->all();
-
+        $tos = config('mailing.kpinvest_to', []);
         if (empty($tos)) {
-            $this->warn('KPINVEST_MAIL_TO no está configurado. No se envía correo.');
+            $this->warn('KPINVEST_MAIL_TO vacío (config). No se envía correo.');
             return self::SUCCESS;
         }
 
