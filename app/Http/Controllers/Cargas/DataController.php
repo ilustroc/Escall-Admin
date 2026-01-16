@@ -11,8 +11,6 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\DataImport;
-use App\Imports\CsvDataImport;
 
 class DataController extends Controller
 {
@@ -31,20 +29,24 @@ class DataController extends Controller
 
         // 1) Guardar archivo en storage/app/imports
         Storage::disk('local')->makeDirectory('imports');
-        $filename = 'data_' . now()->format('Ymd_His') . '.csv';
-        $relative = $r->file('csv')->storeAs('imports', $filename, 'local');
-        $abs      = Storage::disk('local')->path($relative);
+        $filename = 'data_'.now()->format('Ymd_His').'.csv';
+        $relative = $r->file('csv')->storeAs('imports', $filename, 'local'); // 'imports/xxx.csv'
+        $abs      = Storage::path($relative); // <= evita el warning de Intelephense
+
+        if (!is_file($abs)) {
+            return back()->withErrors("No se pudo localizar el archivo guardado: $abs");
+        }
 
         // 2) Ejecutar importador en streaming
         try {
             $batchSize = (int) env('DATA_CSV_BATCH', 5000);
-            $imp   = new CsvDataImport(batchSize: $batchSize);
-            $stats = $imp->run($abs);
+            $imp       = new \App\Imports\CsvDataImport(batchSize: $batchSize);
+            $stats     = $imp->run($abs);
         } catch (\Throwable $e) {
             Log::error('CSV import failed', ['error' => $e->getMessage()]);
-            return back()->withErrors('Error importando CSV: ' . $e->getMessage());
+            return back()->withErrors('Error importando CSV: '.$e->getMessage());
         } finally {
-            @unlink($abs);
+            @unlink($abs); // limpia archivo temporal
         }
 
         return back()->with('ok',
@@ -54,7 +56,7 @@ class DataController extends Controller
     }
 
     /**
-     * Importa DATA desde XLSX (chunk reading).
+     * Importa DATA desde XLSX (Maatwebsite Excel + chunk + upsert).
      */
     public function upload(DataUploadRequest $request): RedirectResponse
     {
@@ -63,45 +65,41 @@ class DataController extends Controller
 
         try {
             $batchSize = (int) env('DATA_XLSX_BATCH', 5000);
-            $import = new DataImport(batchSize: $batchSize);
+            $import    = new \App\Imports\DataImport(batchSize: $batchSize);
             Excel::import($import, $request->file('archivo'));
         } catch (\Throwable $e) {
             Log::error('XLSX import failed', ['error' => $e->getMessage()]);
-            return back()->withErrors('Error importando XLSX: ' . $e->getMessage());
+            return back()->withErrors('Error importando XLSX: '.$e->getMessage());
         }
 
-        return back()->with(
-            'ok',
+        return back()->with('ok',
             "XLSX importado. Procesadas: {$import->processed}, insertadas: {$import->inserted}, ".
             "omitidas: {$import->skipped}, con error: {$import->failed}."
         );
     }
 
     /**
-     * Descarga plantilla CSV (con BOM para Excel).
+     * Descarga plantilla CSV.
      */
     public function templateCsv()
     {
         $headers = [
             'CODIGO','DNI','TITULAR','CARTERA','ENTIDAD','COSECHA','SUB_CARTERA',
             'PRODUCTO','SUB_PRODUCTO','HISTORICO','DEPARTAMENTO',
-            'DEUDA_TOTAL','DEUDA_CAPITAL','CAMPANIA','PORCENTAJE',
+            'DEUDA_TOTAL','DEUDA_CAPITAL','CAMPANIA','PORCENTAJE'
         ];
 
         $ejemplo = [[
             '0000001587','00202080','LOJAS IPANAQUE PEDRO NICOLAS','TEC CENTER','COOP','CASTIGO','-',
-            'CREDI PYME','-','OCTUBRE . 2025','LIMA','1500.00','932.46','0.00','0.35',
+            'CREDI PYME','-','OCTUBRE . 2025','LIMA','1500.00','932.46','0.00','0.35'
         ]];
 
-        $csv = fopen('php://temp', 'w+');
-        // BOM UTF-8 para que Excel respete tildes
-        fwrite($csv, "\xEF\xBB\xBF");
-
-        fputcsv($csv, $headers);
-        foreach ($ejemplo as $r) fputcsv($csv, $r);
-        rewind($csv);
-        $out = stream_get_contents($csv);
-        fclose($csv);
+        $tmp = fopen('php://temp','w+');
+        fputcsv($tmp, $headers);
+        foreach ($ejemplo as $r) fputcsv($tmp, $r);
+        rewind($tmp);
+        $out = stream_get_contents($tmp);
+        fclose($tmp);
 
         return Response::make($out, 200, [
             'Content-Type'        => 'text/csv; charset=UTF-8',
