@@ -76,11 +76,11 @@
                                 </a>
                                 <a href="{{ route('cargas.index', ['tab' => 'data']) }}" 
                                    class="block rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors {{ request()->routeIs('cargas.index') && request('tab') == 'data' ? 'text-white bg-blue-600' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-                                    Carga Cartera
+                                    Cartera
                                 </a>
                                 <a href="{{ route('cargas.index', ['tab' => 'pagos']) }}" 
                                    class="block rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors {{ request()->routeIs('cargas.index') && request('tab') == 'pagos' ? 'text-white bg-blue-600' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-                                    Carga Pagos
+                                    Pagos
                                 </a>
                             </div>
                         </div>

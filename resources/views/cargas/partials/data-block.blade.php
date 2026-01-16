@@ -27,44 +27,108 @@
 
     {{-- CONTENIDO --}}
     <div class="p-5">
-        
-        {{-- Alerta Informativa (Opcional) --}}
-        <div class="mb-5 flex items-start gap-3 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p>
-                Asegúrate de que el archivo <strong>.xlsx</strong> contenga todas las columnas requeridas (DNI, Nombre, Capital, Deuda, etc.) para evitar errores de importación.
-            </p>
-        </div>
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 
-        {{-- FORMULARIO --}}
-        <form method="POST" 
-              action="{{ route('cargas.data.upload') }}" 
-              enctype="multipart/form-data" 
-              class="flex flex-col items-start gap-4 sm:flex-row sm:items-end">
-            @csrf
-            
-            <div class="w-full sm:w-auto">
-                <label class="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    Archivo XLSX
-                </label>
-                
-                {{-- Input estilizado --}}
-                <input type="file" 
-                       name="archivo" 
-                       accept=".xlsx" 
-                       required
-                       class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-80">
+            {{-- CARD: XLSX --}}
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="mb-3 flex items-start gap-3">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-bold text-slate-800">Importar por Excel (XLSX)</h3>
+                        <p class="text-xs text-slate-500">Ideal para cargas pequeñas/medianas y revisión manual.</p>
+                    </div>
+                </div>
+
+                <form method="POST"
+                    action="{{ route('cargas.data.upload') }}"
+                    enctype="multipart/form-data"
+                    class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    @csrf
+
+                    <div class="w-full">
+                        <label class="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Archivo XLSX
+                        </label>
+
+                        <input type="file"
+                            name="archivo"
+                            accept=".xlsx"
+                            required
+                            class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600
+                                    file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-1
+                                    file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100
+                                    focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+
+                    <button type="submit"
+                            class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5
+                                text-xs font-bold text-white shadow-sm transition hover:bg-blue-700
+                                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Subir e Importar
+                    </button>
+                </form>
             </div>
 
-            <button type="submit" 
-                    class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Subir e Importar
-            </button>
-        </form>
+            {{-- CARD: CSV (ACOMODADO) --}}
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="mb-3 flex items-start gap-3">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m-8 0h8m-8 0a2 2 0 01-2-2V7a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2" />
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-bold text-slate-800">Importar por CSV (rápido)</h3>
+                        <p class="text-xs text-slate-500">
+                            Recomendado para cargas grandes. Más rápido y estable que XLSX.
+                        </p>
+                    </div>
+                </div>
+
+                <form method="POST"
+                    action="{{ route('cargas.data.import.csv') }}"
+                    enctype="multipart/form-data"
+                    class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    @csrf
+
+                    <div class="w-full">
+                        <label class="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Archivo CSV
+                        </label>
+
+                        <input type="file"
+                            name="csv"
+                            accept=".csv,text/csv"
+                            required
+                            class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-600
+                                    file:mr-4 file:rounded-full file:border-0 file:bg-emerald-50 file:px-4 file:py-1
+                                    file:text-xs file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100
+                                    focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                    </div>
+
+                    <button type="submit"
+                            class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5
+                                text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700
+                                focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 sm:w-auto">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Importar CSV (rápido)
+                    </button>
+                </form>
+            </div>
+
+        </div>
     </div>
 </section>
