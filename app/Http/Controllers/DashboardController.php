@@ -2,45 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\ScheduleStatusService;
+use App\Http\Controllers\Expertis\ExpertisDashboardController;
 use App\Models\Gestion;
 use App\Models\Pago;
+use App\Services\Expertis\ExpertisReportQueryService;
+use Illuminate\Support\Facades\Schema;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index()
-    {
-        // 1. Calcular totales del día (Ejemplos rápidos)
-        // Ajusta los modelos según tus nombres reales
+    public function index(
+        ExpertisDashboardController $expertisDashboard,
+        ExpertisReportQueryService $reportes,
+    ): Response {
         $hoy = now()->format('Y-m-d');
-        
-        // Gestiones de hoy
-        $gestionesHoy = Gestion::whereDate('created_at', $hoy)->count();
-        
-        // Pagos de hoy (Suma)
-        $pagosHoy = Pago::whereDate('fecha', $hoy)->sum('monto');
-        
-        // Última carga (fecha)
-        $ultimaCarga = Gestion::latest('created_at')->value('created_at');
 
-        // Tareas simuladas (manteniendo tu lógica actual)
-        $tasks = [
-            [
-                'label' => 'Actualización de gestiones',
-                'urgency' => 'soon',
-                'in' => '21m 42s',
-                'next_at_label' => date('d/m/Y 11:00'),
-                'last_at_label' => date('d/m/Y 10:00'),
+        return Inertia::render('Expertis/Dashboard', [
+            'expertis' => $expertisDashboard->data($reportes),
+            'legacy' => [
+                'gestiones_hoy' => Schema::hasTable('gestiones')
+                    ? Gestion::whereDate('created_at', $hoy)->count()
+                    : 0,
+                'pagos_hoy' => Schema::hasTable('pagos')
+                    ? (float) Pago::whereDate('fecha', $hoy)->sum('monto')
+                    : 0,
+                'ultima_carga' => Schema::hasTable('gestiones')
+                    ? Gestion::latest('created_at')->value('created_at')
+                    : null,
             ],
-            [
-                'label' => 'Reporte Impulse',
-                'urgency' => 'muted',
-                'in' => '8h 21m',
-                'next_at_label' => date('d/m/Y 19:00'),
-                'last_at_label' => date('d/m/Y 10:00'),
-            ]
-        ];
-
-        return view('dashboard', compact('gestionesHoy', 'pagosHoy', 'ultimaCarga', 'tasks'));
+        ]);
     }
 }
