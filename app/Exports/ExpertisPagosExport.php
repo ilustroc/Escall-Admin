@@ -2,7 +2,6 @@
 
 namespace App\Exports;
 
-use App\Services\Expertis\ExpertisReportQueryService;
 use Illuminate\Database\Query\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
@@ -15,10 +14,7 @@ class ExpertisPagosExport implements FromQuery, WithCustomChunkSize, WithHeading
         private readonly array $filtros,
     ) {}
 
-    public function query(): Builder
-    {
-        return app(ExpertisReportQueryService::class)->pagos($this->filtros);
-    }
+    public function query(): Builder {}
 
     public function headings(): array
     {

@@ -5,20 +5,28 @@ namespace App\Imports;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class DataImport implements ToCollection, WithHeadingRow, WithChunkReading
+class DataImport implements ToCollection, WithChunkReading, WithHeadingRow
 {
     public int $processed = 0;
-    public int $inserted  = 0;
-    public int $skipped   = 0;
-    public int $failed    = 0;
+
+    public int $inserted = 0;
+
+    public int $skipped = 0;
+
+    public int $failed = 0;
 
     protected int $batchSize = 1000; // inserciones por lote
 
     // requeridos mínimos para poder guardar
     protected array $required = ['codigo', 'dni'];
+
+    public function __construct(int $batchSize = 5000)
+    {
+        $this->batchSize = max(200, $batchSize);
+    }
 
     public function collection(Collection $rows)
     {
@@ -28,11 +36,13 @@ class DataImport implements ToCollection, WithHeadingRow, WithChunkReading
             $normHeaders = [];
             foreach (array_keys($first) as $raw) {
                 $k = $this->normKey($raw);
-                if ($k === '' && trim((string)$raw) === '%') $k = 'porcentaje';
+                if ($k === '' && trim((string) $raw) === '%') {
+                    $k = 'porcentaje';
+                }
                 $normHeaders[] = $k;
             }
             foreach ($this->required as $h) {
-                if (!in_array($h, $normHeaders, true)) {
+                if (! in_array($h, $normHeaders, true)) {
                     throw new \RuntimeException(
                         "Falta columna requerida: {$h}. Encabezados normalizados: ".implode(', ', $normHeaders)
                     );
@@ -51,35 +61,43 @@ class DataImport implements ToCollection, WithHeadingRow, WithChunkReading
                 $x = [];
                 foreach ($raw as $k => $v) {
                     $nk = $this->normKey($k);
-                    if ($nk === '' && trim((string)$k) === '%') $nk = 'porcentaje';
-                    if ($nk !== '') $x[$nk] = $v;
+                    if ($nk === '' && trim((string) $k) === '%') {
+                        $nk = 'porcentaje';
+                    }
+                    if ($nk !== '') {
+                        $x[$nk] = $v;
+                    }
                 }
 
-                $codigo = trim((string)($x['codigo'] ?? ''));
-                $dni    = trim((string)($x['dni'] ?? ''));
+                $codigo = trim((string) ($x['codigo'] ?? ''));
+                $dni = trim((string) ($x['dni'] ?? ''));
 
-                if ($codigo === '' || $dni === '') { $this->skipped++; continue; }
+                if ($codigo === '' || $dni === '') {
+                    $this->skipped++;
+
+                    continue;
+                }
 
                 $batch[] = [
-                    'codigo'        => $codigo,
-                    'dni'           => $dni,
-                    'titular'       => $this->cut($x['titular']       ?? null, 150),
-                    'cartera'       => $this->cut($x['cartera']       ?? null, 100),
-                    'entidad'       => $this->cut($x['entidad']       ?? null, 100),
-                    'cosecha'       => $this->cut($x['cosecha']       ?? null, 100),
-                    'sub_cartera'   => $this->cut($x['sub_cartera']   ?? ($x['subcartera'] ?? null), 100),
-                    'producto'      => $this->cut($x['producto']      ?? null, 100),
-                    'sub_producto'  => $this->cut($x['sub_producto']  ?? ($x['subproducto'] ?? null), 100),
-                    'historico'     => $this->cut($x['historico']     ?? null, 120),
-                    'departamento'  => $this->cut($x['departamento']  ?? null, 100),
+                    'codigo' => $codigo,
+                    'dni' => $dni,
+                    'titular' => $this->cut($x['titular'] ?? null, 150),
+                    'cartera' => $this->cut($x['cartera'] ?? null, 100),
+                    'entidad' => $this->cut($x['entidad'] ?? null, 100),
+                    'cosecha' => $this->cut($x['cosecha'] ?? null, 100),
+                    'sub_cartera' => $this->cut($x['sub_cartera'] ?? ($x['subcartera'] ?? null), 100),
+                    'producto' => $this->cut($x['producto'] ?? null, 100),
+                    'sub_producto' => $this->cut($x['sub_producto'] ?? ($x['subproducto'] ?? null), 100),
+                    'historico' => $this->cut($x['historico'] ?? null, 120),
+                    'departamento' => $this->cut($x['departamento'] ?? null, 100),
 
-                    'deuda_total'   => $this->toDecimal($x['deuda_total']   ?? null, 2),
+                    'deuda_total' => $this->toDecimal($x['deuda_total'] ?? null, 2),
                     'deuda_capital' => $this->toDecimal($x['deuda_capital'] ?? null, 2),
-                    'campania'      => $this->toDecimal($x['campania']      ?? ($x['campana'] ?? null), 2),
-                    'porcentaje'    => $this->toDecimal($x['porcentaje']    ?? null, 9),
+                    'campania' => $this->toDecimal($x['campania'] ?? ($x['campana'] ?? null), 2),
+                    'porcentaje' => $this->toDecimal($x['porcentaje'] ?? null, 9),
 
-                    'created_at'    => $now,
-                    'updated_at'    => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ];
 
                 if (count($batch) >= $this->batchSize) {
@@ -91,7 +109,9 @@ class DataImport implements ToCollection, WithHeadingRow, WithChunkReading
             }
         }
 
-        if (!empty($batch)) $this->flush($batch);
+        if (! empty($batch)) {
+            $this->flush($batch);
+        }
     }
 
     public function chunkSize(): int
@@ -106,9 +126,9 @@ class DataImport implements ToCollection, WithHeadingRow, WithChunkReading
             $batch,
             ['codigo'],
             [
-                'dni','titular','cartera','entidad','cosecha','sub_cartera','producto',
-                'sub_producto','historico','departamento','deuda_total','deuda_capital',
-                'campania','porcentaje','updated_at'
+                'dni', 'titular', 'cartera', 'entidad', 'cosecha', 'sub_cartera', 'producto',
+                'sub_producto', 'historico', 'departamento', 'deuda_total', 'deuda_capital',
+                'campania', 'porcentaje', 'updated_at',
             ]
         );
         $this->inserted += count($batch);
@@ -120,15 +140,19 @@ class DataImport implements ToCollection, WithHeadingRow, WithChunkReading
     private function normKey(string $k): string
     {
         $k = mb_strtolower($k, 'UTF-8');
-        $k = strtr($k, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n']);
-        $k = preg_replace('/[^a-z0-9]+/','_', $k);
+        $k = strtr($k, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ñ' => 'n']);
+        $k = preg_replace('/[^a-z0-9]+/', '_', $k);
+
         return trim($k, '_');
     }
 
     private function cut($v, int $n): ?string
     {
-        if ($v === null) return null;
-        $s = trim((string)$v);
+        if ($v === null) {
+            return null;
+        }
+        $s = trim((string) $v);
+
         return $s === '' ? null : mb_substr($s, 0, $n);
     }
 
@@ -138,9 +162,13 @@ class DataImport implements ToCollection, WithHeadingRow, WithChunkReading
      */
     private function toDecimal($v, int $scale): ?string
     {
-        if ($v === null) return null;
-        $s = trim((string)$v);
-        if ($s === '' || $s === '?' || $s === '-') return null;
+        if ($v === null) {
+            return null;
+        }
+        $s = trim((string) $v);
+        if ($s === '' || $s === '?' || $s === '-') {
+            return null;
+        }
 
         // quita espacios/no-break
         $s = str_replace(["\xC2\xA0", ' '], '', $s);
@@ -153,9 +181,11 @@ class DataImport implements ToCollection, WithHeadingRow, WithChunkReading
             $s = str_replace(',', '', $s);
         }
 
-        if (!is_numeric($s)) return null;
+        if (! is_numeric($s)) {
+            return null;
+        }
 
         // devolver con escala fija
-        return number_format((float)$s, $scale, '.', '');
+        return number_format((float) $s, $scale, '.', '');
     }
 }

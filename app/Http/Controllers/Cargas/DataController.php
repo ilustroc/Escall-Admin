@@ -3,107 +3,81 @@
 namespace App\Http\Controllers\Cargas;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\CsvUploadRequest;
-use App\Http\Requests\DataUploadRequest;
+use App\Http\Requests\Cargas\ImportarDataCsvRequest;
+use App\Http\Requests\Cargas\ImportarDataXlsxRequest;
+use App\Services\Cargas\DataImportService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\View\View;
-use Maatwebsite\Excel\Facades\Excel;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class DataController extends Controller
 {
-    public function form(): View
+    public function form(): Response
     {
-        return view('cargas.index');
+        return Inertia::render('Cargas/Data/Index');
     }
 
-    /**
-     * Importa DATA desde CSV (streaming, muy grande).
-     */
-    public function importarCsv(CsvUploadRequest $r): RedirectResponse
-    {
-        @set_time_limit(0);
-        @ini_set('memory_limit', '1024M');
-
-        // 1) Guardar archivo en storage/app/imports
-        Storage::disk('local')->makeDirectory('imports');
-        $filename = 'data_'.now()->format('Ymd_His').'.csv';
-        $relative = $r->file('csv')->storeAs('imports', $filename, 'local'); // 'imports/xxx.csv'
-        $abs      = Storage::path($relative); // <= evita el warning de Intelephense
-
-        if (!is_file($abs)) {
-            return back()->withErrors("No se pudo localizar el archivo guardado: $abs");
-        }
-
-        // 2) Ejecutar importador en streaming
+    public function importarCsv(
+        ImportarDataCsvRequest $request,
+        DataImportService $service,
+    ): RedirectResponse {
         try {
-            $batchSize = (int) env('DATA_CSV_BATCH', 5000);
-            $imp       = new \App\Imports\CsvDataImport(batchSize: $batchSize);
-            $stats     = $imp->run($abs);
-        } catch (\Throwable $e) {
-            Log::error('CSV import failed', ['error' => $e->getMessage()]);
-            return back()->withErrors('Error importando CSV: '.$e->getMessage());
-        } finally {
-            @unlink($abs); // limpia archivo temporal
+            $stats = $service->importCsv($request->file('csv'));
+        } catch (\Throwable $exception) {
+            Log::error('Falló la importación CSV de DATA.', ['exception' => $exception]);
+
+            return back()->with('error', 'No se pudo importar el CSV: '.$exception->getMessage());
         }
 
-        return back()->with('ok',
-            "CSV importado. Procesados: {$stats['processed']} | Insertados/Actualizados: {$stats['inserted']} | ".
-            "Omitidos: {$stats['skipped']} | Fallidos: {$stats['failed']}"
-        );
+        return back()->with('success', $this->summary('CSV', $stats));
     }
 
-    /**
-     * Importa DATA desde XLSX (Maatwebsite Excel + chunk + upsert).
-     */
-    public function upload(DataUploadRequest $request): RedirectResponse
-    {
-        @set_time_limit(0);
-        @ini_set('memory_limit', '1024M');
-
+    public function upload(
+        ImportarDataXlsxRequest $request,
+        DataImportService $service,
+    ): RedirectResponse {
         try {
-            $batchSize = (int) env('DATA_XLSX_BATCH', 5000);
-            $import    = new \App\Imports\DataImport(batchSize: $batchSize);
-            Excel::import($import, $request->file('archivo'));
-        } catch (\Throwable $e) {
-            Log::error('XLSX import failed', ['error' => $e->getMessage()]);
-            return back()->withErrors('Error importando XLSX: '.$e->getMessage());
+            $stats = $service->importXlsx($request->file('archivo'));
+        } catch (\Throwable $exception) {
+            Log::error('Falló la importación XLSX de DATA.', ['exception' => $exception]);
+
+            return back()->with('error', 'No se pudo importar el XLSX: '.$exception->getMessage());
         }
 
-        return back()->with('ok',
-            "XLSX importado. Procesadas: {$import->processed}, insertadas: {$import->inserted}, ".
-            "omitidas: {$import->skipped}, con error: {$import->failed}."
-        );
+        return back()->with('success', $this->summary('XLSX', $stats));
     }
 
-    /**
-     * Descarga plantilla CSV.
-     */
-    public function templateCsv()
+    public function templateCsv(): HttpResponse
     {
         $headers = [
-            'CODIGO','DNI','TITULAR','CARTERA','ENTIDAD','COSECHA','SUB_CARTERA',
-            'PRODUCTO','SUB_PRODUCTO','HISTORICO','DEPARTAMENTO',
-            'DEUDA_TOTAL','DEUDA_CAPITAL','CAMPANIA','PORCENTAJE'
+            'CODIGO', 'DNI', 'TITULAR', 'CARTERA', 'ENTIDAD', 'COSECHA', 'SUB_CARTERA',
+            'PRODUCTO', 'SUB_PRODUCTO', 'HISTORICO', 'DEPARTAMENTO',
+            'DEUDA_TOTAL', 'DEUDA_CAPITAL', 'CAMPANIA', 'PORCENTAJE',
         ];
+        $example = [
+            '0000001587', '00202080', 'LOJAS IPANAQUE PEDRO NICOLAS', 'TEC CENTER',
+            'COOP', 'CASTIGO', '-', 'CREDI PYME', '-', 'OCTUBRE . 2025', 'LIMA',
+            '1500.00', '932.46', '0.00', '0.35',
+        ];
+        $stream = fopen('php://temp', 'w+');
+        fputcsv($stream, $headers);
+        fputcsv($stream, $example);
+        rewind($stream);
+        $contents = stream_get_contents($stream);
+        fclose($stream);
 
-        $ejemplo = [[
-            '0000001587','00202080','LOJAS IPANAQUE PEDRO NICOLAS','TEC CENTER','COOP','CASTIGO','-',
-            'CREDI PYME','-','OCTUBRE . 2025','LIMA','1500.00','932.46','0.00','0.35'
-        ]];
-
-        $tmp = fopen('php://temp','w+');
-        fputcsv($tmp, $headers);
-        foreach ($ejemplo as $r) fputcsv($tmp, $r);
-        rewind($tmp);
-        $out = stream_get_contents($tmp);
-        fclose($tmp);
-
-        return Response::make($out, 200, [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
+        return response($contents, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="plantilla_data.csv"',
         ]);
+    }
+
+    private function summary(string $type, array $stats): string
+    {
+        return "{$type} importado. Procesados: {$stats['processed']} | ".
+            "Insertados/actualizados: {$stats['inserted']} | ".
+            "Omitidos: {$stats['skipped']} | Fallidos: {$stats['failed']}";
     }
 }

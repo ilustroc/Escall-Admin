@@ -27,7 +27,7 @@ class TipificacionExpertisController extends Controller
     ): RedirectResponse {
         TipificacionExpertis::create($request->validated());
 
-        return back()->with('ok', 'Tipificación Expertis creada.');
+        return back()->with('success', 'Tipificación Expertis creada.');
     }
 
     public function update(
@@ -36,7 +36,7 @@ class TipificacionExpertisController extends Controller
     ): RedirectResponse {
         $tipificacion->update($request->validated());
 
-        return back()->with('ok', 'Tipificación Expertis actualizada.');
+        return back()->with('success', 'Tipificación Expertis actualizada.');
     }
 
     public function destroy(TipificacionExpertis $tipificacion): RedirectResponse
@@ -45,13 +45,13 @@ class TipificacionExpertisController extends Controller
             $tipificacion->update(['activo' => false]);
 
             return back()->with(
-                'warn',
+                'warning',
                 'La tipificación tiene gestiones relacionadas y fue desactivada.',
             );
         }
 
         $tipificacion->delete();
 
-        return back()->with('ok', 'Tipificación Expertis eliminada.');
+        return back()->with('success', 'Tipificación Expertis eliminada.');
     }
 }

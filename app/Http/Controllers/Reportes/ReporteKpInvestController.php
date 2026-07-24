@@ -2,73 +2,38 @@
 
 namespace App\Http\Controllers\Reportes;
 
-use Carbon\Carbon;
-use Illuminate\Http\Request;
-use Illuminate\View\View;
-use Illuminate\Support\Facades\DB;
 use App\Exports\ReporteKpInvestXlsxFastExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reportes\FiltrarReporteKpInvestRequest;
+use App\Queries\Reportes\ReporteKpInvestQuery;
+use Carbon\Carbon;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ReporteKpInvestController extends Controller
 {
-    public function index(Request $request): View
-    {
-        // Fechas (defaults: hoy)
-        $fi = $request->query('fi');
-        $ff = $request->query('ff');
+    public function index(
+        FiltrarReporteKpInvestRequest $request,
+        ReporteKpInvestQuery $query,
+    ): Response {
+        $filters = $request->validated();
 
-        if (!$this->isDate($fi)) $fi = Carbon::today()->toDateString();
-        if (!$this->isDate($ff)) $ff = $fi;
-        if ($ff < $fi) $ff = $fi;
-
-        $start = $fi . ' 00:00:00';
-        $endEx = Carbon::parse($ff)->addDay()->startOfDay()->toDateTimeString(); // fin exclusivo
-
-        // Query base reutilizable
-        $base = $this->baseQuery($start, $endEx);
-
-        // SOLO conteo
-        $kpCount = $base->count();
-
-        return view('reportes.index', [
-            'kpFi'    => $fi,
-            'kpFf'    => $ff,
-            'kpCount' => $kpCount,
+        return Inertia::render('Reportes/KpInvest', [
+            'filtros' => $filters,
+            'total' => $query->count($filters['fi'], $filters['ff']),
         ]);
     }
 
-    public function export(Request $request)
+    public function export(FiltrarReporteKpInvestRequest $request)
     {
-        $fi = $request->query('fi');
-        $ff = $request->query('ff');
+        $filters = $request->validated();
+        $suffix = $filters['fi'] === $filters['ff']
+            ? Carbon::parse($filters['fi'])->format('Ymd')
+            : Carbon::parse($filters['fi'])->format('Ymd')
+                .'_'.Carbon::parse($filters['ff'])->format('Ymd');
 
-        if (!$this->isDate($fi)) $fi = Carbon::today()->toDateString();
-        if (!$this->isDate($ff)) $ff = $fi;
-        if ($ff < $fi) $ff = $fi;
-
-        $sufijo = ($fi === $ff)
-            ? Carbon::parse($fi)->format('Ymd')
-            : Carbon::parse($fi)->format('Ymd') . '_' . Carbon::parse($ff)->format('Ymd');
-
-        $filename = "Reporte KP INVEST {$sufijo}.xlsx";
-
-        $exporter = (new ReporteKpInvestXlsxFastExport())
-            ->forRange($fi, $ff);
-
-        return $exporter->stream($filename);
-    }
-
-
-    private function isDate(?string $s): bool
-    {
-        if (!$s) return false;
-        return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $s);
-    }
-
-    private function baseQuery(string $start, string $endEx)
-    {
-        return DB::table('gestiones as g')
-            ->where('g.fecha_gestion', '>=', $start)
-            ->where('g.fecha_gestion', '<',  $endEx);
+        return (new ReporteKpInvestXlsxFastExport)
+            ->forRange($filters['fi'], $filters['ff'])
+            ->stream("Reporte KP INVEST {$suffix}.xlsx");
     }
 }

@@ -2,75 +2,69 @@
 
 namespace App\Http\Controllers\Reportes;
 
-use App\Exports\AsignacionTecCenterPlaceholderExport;
+use App\Exports\AsignacionTecCenterExport;
 use App\Exports\ReporteDataCarterasXlsxFastExport;
 use App\Exports\ReporteDataTecCenterMesExport;
 use App\Exports\ReporteTecCenterMesExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reportes\FiltrarReporteCarterasRequest;
+use App\Queries\Reportes\ReporteCarterasQuery;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
-use OpenSpout\Common\Entity\Row;
-use OpenSpout\Writer\Common\Creator\WriterFactory;
 
 class ReporteCarterasController extends Controller
 {
-    public function index(Request $r)
-    {
-        $tag  = $r->query('tag',  'OCTUBRE25');
-        $lote = $r->query('lote', '1809');
-        $mes  = $r->query('mes', Carbon::now()->format('Y-m'));
-        return view('reportes.carteras', compact('tag', 'lote', 'mes'));
+    public function index(
+        FiltrarReporteCarterasRequest $request,
+        ReporteCarterasQuery $query,
+    ): Response {
+        $filters = $request->validated();
+
+        return Inertia::render('Reportes/Carteras', [
+            'filtros' => $filters,
+            'resumen' => $query->summary($filters['mes']),
+        ]);
     }
 
-    public function exportDataXlsxFast(Request $r)
+    public function exportDataXlsxFast(FiltrarReporteCarterasRequest $request)
     {
-        $tag = $r->query('tag', 'DICIEMBRE');
-        $mes = $this->assertMonth($r->query('mes'));
+        $filters = $request->validated();
 
         return (new ReporteDataCarterasXlsxFastExport)
-            ->forMonth($mes)
-            ->stream("REPORTE {$tag} ESCALL.xlsx");
+            ->forMonth($filters['mes'])
+            ->stream("REPORTE {$filters['tag']} ESCALL.xlsx");
     }
 
-    public function exportAsignacionTec(Request $r)
+    public function exportAsignacionTec(FiltrarReporteCarterasRequest $request)
     {
-        $lote = $r->query('lote', '1809');
+        $filters = $request->validated();
 
         return Excel::download(
-            new AsignacionTecCenterPlaceholderExport,
-            "FRMT_RG AGENCIAS EXTERNAS {$lote}.xlsx"
+            new AsignacionTecCenterExport,
+            "FRMT_RG AGENCIAS EXTERNAS {$filters['lote']}.xlsx",
         );
     }
 
-    public function exportDataTecCenter(Request $r)
+    public function exportDataTecCenter(FiltrarReporteCarterasRequest $request)
     {
-        $mes = $this->assertMonth($r->query('mes'));
+        $month = $request->validated('mes');
 
         return Excel::download(
-            (new ReporteDataTecCenterMesExport)->forMonth($mes),
-            "REPORTE DATA TEC CENTER {$mes}.xlsx"
+            (new ReporteDataTecCenterMesExport)->forMonth($month),
+            "REPORTE DATA TEC CENTER {$month}.xlsx",
         );
     }
 
-    public function exportTecCenterData(Request $r)
+    public function exportTecCenterData(FiltrarReporteCarterasRequest $request)
     {
-        $mes = $this->assertMonth($r->query('mes', Carbon::now()->format('Y-m')));
-        $suf = Carbon::createFromFormat('Y-m', $mes)->format('d.m');
+        $month = $request->validated('mes');
+        $suffix = Carbon::createFromFormat('Y-m', $month)->format('d.m');
 
         return Excel::download(
-            (new ReporteTecCenterMesExport)->forMonth($mes),
-            "FRMT_GESTIONES CP - 03.01 ({$suf}).xlsx"
+            (new ReporteTecCenterMesExport)->forMonth($month),
+            "FRMT_GESTIONES CP - 03.01 ({$suffix}).xlsx",
         );
-    }
-
-    private function assertMonth(?string $mes): string
-    {
-        $mes = (string) $mes;
-        if (!preg_match('/^\d{4}\-\d{2}$/', $mes)) {
-            abort(422, 'Mes inválido. Use formato YYYY-MM.');
-        }
-        return $mes;
     }
 }

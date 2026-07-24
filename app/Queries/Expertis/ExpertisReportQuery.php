@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Services\Expertis;
+namespace App\Queries\Expertis;
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
-class ExpertisReportQueryService
+class ExpertisReportQuery
 {
     public function gestiones(array $filtros = [], bool $ordenar = true): Builder
     {
