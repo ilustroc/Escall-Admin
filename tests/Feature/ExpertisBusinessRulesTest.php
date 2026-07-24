@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\TipificacionExpertis;
 use App\Models\User;
-use App\Services\Expertis\ExpertisReportQueryService;
+use App\Queries\Expertis\ExpertisReportQuery;
 use Database\Seeders\TipificacionesExpertisSeeder;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -12,13 +12,13 @@ use Tests\TestCase;
 
 class ExpertisBusinessRulesTest extends TestCase
 {
-    private ExpertisReportQueryService $reportes;
+    private ExpertisReportQuery $reportes;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->seed(TipificacionesExpertisSeeder::class);
-        $this->reportes = app(ExpertisReportQueryService::class);
+        $this->reportes = app(ExpertisReportQuery::class);
     }
 
     public function test_menor_peso_recibe_unico_uno(): void
