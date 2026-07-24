@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { ChartBarIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     label: { type: String, required: true },
@@ -27,7 +28,7 @@ const color = computed(() => ({
                 <p v-if="helper" class="mt-1 text-xs text-slate-500">{{ helper }}</p>
             </div>
             <span :class="['flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold', color]">
-                <slot name="icon">↗</slot>
+                <slot name="icon"><ChartBarIcon class="h-4 w-4" /></slot>
             </span>
         </div>
     </article>

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 import AppBadge from './AppBadge.vue';
 import AppButton from './AppButton.vue';
 import AppTable from './AppTable.vue';
@@ -54,7 +55,7 @@ async function validateFile() {
     body.append('archivo', file.value);
 
     try {
-        const { data } = await window.axios.post(props.previewUrl, body, {
+        const { data } = await axios.post(props.previewUrl, body, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
         preview.value = data;

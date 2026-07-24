@@ -1,5 +1,12 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import {
+    CheckCircleIcon,
+    ExclamationTriangleIcon,
+    InformationCircleIcon,
+    XCircleIcon,
+    XMarkIcon,
+} from '@heroicons/vue/24/solid';
 
 const props = defineProps({
     message: { type: String, default: '' },
@@ -8,6 +15,18 @@ const props = defineProps({
 
 const visible = ref(Boolean(props.message));
 let timer;
+const icon = computed(() => ({
+    success: CheckCircleIcon,
+    warning: ExclamationTriangleIcon,
+    error: XCircleIcon,
+    info: InformationCircleIcon,
+}[props.tone] ?? InformationCircleIcon));
+const color = computed(() => ({
+    success: 'bg-[#12B76A]',
+    warning: 'bg-[#F79009]',
+    error: 'bg-[#F04438]',
+    info: 'bg-[#155EEF]',
+}[props.tone] ?? 'bg-[#155EEF]'));
 
 watch(() => props.message, (value) => {
     clearTimeout(timer);
@@ -25,15 +44,16 @@ watch(() => props.message, (value) => {
                 'border-emerald-200': tone === 'success',
                 'border-amber-200': tone === 'warning',
                 'border-red-200': tone === 'error',
+                'border-blue-200': tone === 'info',
             }"
             role="status"
         >
             <span
                 class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                :class="tone === 'success' ? 'bg-[#12B76A]' : tone === 'warning' ? 'bg-[#F79009]' : 'bg-[#F04438]'"
-            >{{ tone === 'success' ? '✓' : tone === 'warning' ? '!' : '×' }}</span>
+                :class="color"
+            ><component :is="icon" class="h-4 w-4" /></span>
             <p class="text-sm font-medium text-[#172033]">{{ message }}</p>
-            <button class="ml-auto text-slate-400 hover:text-slate-700" @click="visible = false">×</button>
+            <button class="ml-auto text-slate-400 hover:text-slate-700" aria-label="Cerrar" @click="visible = false"><XMarkIcon class="h-4 w-4" /></button>
         </div>
     </Transition>
 </template>

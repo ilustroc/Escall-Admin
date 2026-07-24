@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import { ArrowPathIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     href: { type: String, default: null },
@@ -43,10 +44,7 @@ const classes = computed(() => {
         :class="classes"
         :disabled="disabled || loading"
     >
-        <svg v-if="loading" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-            <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
-            <path class="opacity-75" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3Z" />
-        </svg>
+        <ArrowPathIcon v-if="loading" class="h-4 w-4 animate-spin" />
         <slot />
     </Link>
     <button
@@ -55,10 +53,7 @@ const classes = computed(() => {
         :class="classes"
         :disabled="disabled || loading"
     >
-        <svg v-if="loading" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-            <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
-            <path class="opacity-75" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3Z" />
-        </svg>
+        <ArrowPathIcon v-if="loading" class="h-4 w-4 animate-spin" />
         <slot />
     </button>
 </template>

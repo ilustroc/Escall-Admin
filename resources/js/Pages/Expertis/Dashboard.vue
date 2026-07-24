@@ -63,7 +63,7 @@ function tone(status) {
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 class="text-sm font-bold text-[#172033]">Operación actual</h2>
-                        <p class="mt-1 text-xs text-slate-500">Indicadores legacy conservados durante la migración progresiva.</p>
+                        <p class="mt-1 text-xs text-slate-500">Indicadores operativos integrados en la arquitectura unificada.</p>
                     </div>
                     <div class="flex flex-wrap gap-5 text-xs">
                         <span>Gestiones hoy: <strong class="text-[#172033]">{{ legacy.gestiones_hoy }}</strong></span>

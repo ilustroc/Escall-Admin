@@ -1,4 +1,5 @@
 <script setup>
+import { XMarkIcon } from '@heroicons/vue/24/outline';
 defineProps({
     open: { type: Boolean, default: false },
     title: { type: String, default: '' },
@@ -16,9 +17,7 @@ defineEmits(['close']);
                 <header class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                     <h2 class="text-base font-bold text-[#172033]">{{ title }}</h2>
                     <button class="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Cerrar" @click="$emit('close')">
-                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-width="2" d="m6 6 12 12M18 6 6 18" />
-                        </svg>
+                        <XMarkIcon class="h-5 w-5" />
                     </button>
                 </header>
                 <div class="p-5"><slot /></div>
