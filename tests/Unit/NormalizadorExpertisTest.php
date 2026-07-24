@@ -33,7 +33,16 @@ class NormalizadorExpertisTest extends TestCase
     {
         $this->assertSame('2026-07-21', $this->normalizador->fecha('21/07/2026'));
         $this->assertSame('2026-07-21', $this->normalizador->fecha('2026-07-21'));
+        $this->assertSame('2025-01-01', $this->normalizador->fecha('1/01/2025 00:00'));
+        $this->assertSame('2025-01-31', $this->normalizador->fecha('31/1/2025 00:00:00'));
         $this->assertNull($this->normalizador->fecha('31/02/2026'));
+        $this->assertNull($this->normalizador->fecha('1/01/2025 25:00'));
+    }
+
+    public function test_convierte_literal_null_en_valor_nulo(): void
+    {
+        $this->assertNull($this->normalizador->texto('NULL'));
+        $this->assertNull($this->normalizador->textoLibre(' null '));
     }
 
     public function test_convierte_montos_con_formatos_razonables(): void

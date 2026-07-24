@@ -44,6 +44,7 @@ class ExpertisImportWorkflowService
         $duplicate = ImportacionExpertis::query()
             ->where('tipo', $type)
             ->where('hash_archivo', $hash)
+            ->whereIn('estado', ImportacionExpertis::ESTADOS_ARCHIVO_PROCESADO)
             ->first();
 
         if ($inspection['columnas_faltantes'] === []) {

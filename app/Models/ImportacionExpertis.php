@@ -29,6 +29,12 @@ class ImportacionExpertis extends Model
 
     public const ESTADO_DUPLICADO = 'duplicado';
 
+    public const ESTADOS_ARCHIVO_PROCESADO = [
+        self::ESTADO_COMPLETADO,
+        self::ESTADO_COMPLETADO_CON_ERRORES,
+        self::ESTADO_DUPLICADO,
+    ];
+
     protected $table = 'importaciones_expertis';
 
     protected $fillable = [

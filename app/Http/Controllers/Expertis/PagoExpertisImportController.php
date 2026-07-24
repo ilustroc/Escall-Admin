@@ -5,17 +5,20 @@ namespace App\Http\Controllers\Expertis;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Expertis\ConfirmarImportacionExpertisRequest;
 use App\Http\Requests\Expertis\ImportarPagosExpertisRequest;
+use App\Http\Requests\Expertis\RegistrarPagoManualExpertisRequest;
 use App\Models\ImportacionExpertis;
 use App\Services\Expertis\ExpertisImportWorkflowService;
 use App\Services\Expertis\ExpertisSpreadsheetService;
+use App\Services\Expertis\RegistrarPagoManualExpertisService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PagoExpertisImportController extends Controller
 {
-    public function create(): Response
+    public function create(Request $request): Response
     {
         return Inertia::render('Expertis/Importaciones/Pagos', [
             'ultimaImportacion' => ImportacionExpertis::query()
@@ -25,6 +28,11 @@ class PagoExpertisImportController extends Controller
             'configuracion' => [
                 'max_mb' => config('expertis.import_max_mb', 50),
                 'extensiones' => ['xlsx'],
+            ],
+            'modo' => $request->query('modo') === 'manual' ? 'manual' : 'archivo',
+            'manualDefaults' => [
+                'fecha' => now()->toDateString(),
+                'ejecutivo' => $request->user()?->name ?? '',
             ],
         ]);
     }
@@ -69,6 +77,31 @@ class PagoExpertisImportController extends Controller
                 $result['duplicado']
                     ? 'Este mismo archivo de pagos ya había sido procesado.'
                     : 'La importación de pagos finalizó.',
+            );
+    }
+
+    public function storeManual(
+        RegistrarPagoManualExpertisRequest $request,
+        RegistrarPagoManualExpertisService $service,
+    ): RedirectResponse {
+        try {
+            $result = $service->registrar(
+                $request->validated(),
+                $request->user()->id,
+            );
+        } catch (\InvalidArgumentException $exception) {
+            return back()
+                ->withErrors(['cuenta' => $exception->getMessage()])
+                ->withInput();
+        }
+
+        return redirect()
+            ->route('expertis.importaciones.pagos.create', ['modo' => 'manual'])
+            ->with(
+                $result['duplicado'] ? 'warning' : 'success',
+                $result['duplicado']
+                    ? 'El pago ya estaba registrado y no se duplicó.'
+                    : 'Pago Expertis registrado manualmente.',
             );
     }
 }

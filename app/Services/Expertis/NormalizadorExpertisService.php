@@ -71,6 +71,10 @@ class NormalizadorExpertisService
         }
 
         $texto = trim($this->textoCrudo($valor));
+        if ($this->esNuloLiteral($texto)) {
+            return null;
+        }
+
         $texto = preg_replace('/\s+/', ' ', $texto) ?? $texto;
         $texto = mb_strtoupper($texto, 'UTF-8');
 
@@ -88,6 +92,10 @@ class NormalizadorExpertisService
         }
 
         $texto = trim($this->textoCrudo($valor));
+        if ($this->esNuloLiteral($texto)) {
+            return null;
+        }
+
         $texto = preg_replace('/[ \t]+/', ' ', $texto) ?? $texto;
 
         if ($texto === '') {
@@ -113,19 +121,13 @@ class NormalizadorExpertisService
         }
 
         $texto = trim($this->textoCrudo($valor));
-        if ($texto === '') {
+        if ($texto === '' || $this->esNuloLiteral($texto)) {
             return null;
         }
 
-        foreach (['!d/m/Y', '!Y-m-d', '!d-m-Y', '!Y/m/d'] as $formato) {
-            try {
-                $fecha = Carbon::createFromFormat($formato, $texto);
-                if ($fecha !== false && $fecha->format(ltrim($formato, '!')) === $texto) {
-                    return $fecha->format('Y-m-d');
-                }
-            } catch (\Throwable) {
-                continue;
-            }
+        $fecha = $this->fechaDmy($texto) ?? $this->fechaYmd($texto);
+        if ($fecha !== null) {
+            return $fecha;
         }
 
         return null;
@@ -280,5 +282,64 @@ class NormalizadorExpertisService
         }
 
         return (string) ($valor ?? '');
+    }
+
+    private function fechaDmy(string $valor): ?string
+    {
+        if (! preg_match(
+            '/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/',
+            $valor,
+            $partes,
+        )) {
+            return null;
+        }
+
+        return $this->construirFecha(
+            (int) $partes[3],
+            (int) $partes[2],
+            (int) $partes[1],
+            $partes,
+        );
+    }
+
+    private function fechaYmd(string $valor): ?string
+    {
+        if (! preg_match(
+            '/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/',
+            $valor,
+            $partes,
+        )) {
+            return null;
+        }
+
+        return $this->construirFecha(
+            (int) $partes[1],
+            (int) $partes[2],
+            (int) $partes[3],
+            $partes,
+        );
+    }
+
+    private function construirFecha(int $anio, int $mes, int $dia, array $partes): ?string
+    {
+        $hora = isset($partes[4]) && $partes[4] !== '' ? (int) $partes[4] : 0;
+        $minuto = isset($partes[5]) && $partes[5] !== '' ? (int) $partes[5] : 0;
+        $segundo = isset($partes[6]) && $partes[6] !== '' ? (int) $partes[6] : 0;
+
+        if (
+            ! checkdate($mes, $dia, $anio)
+            || $hora > 23
+            || $minuto > 59
+            || $segundo > 59
+        ) {
+            return null;
+        }
+
+        return Carbon::create($anio, $mes, $dia)->format('Y-m-d');
+    }
+
+    private function esNuloLiteral(string $valor): bool
+    {
+        return mb_strtoupper(trim($valor), 'UTF-8') === 'NULL';
     }
 }

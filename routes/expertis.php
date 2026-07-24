@@ -27,6 +27,8 @@ Route::prefix('expertis')->name('expertis.')->group(function (): void {
             ->name('pagos.preview');
         Route::post('/pagos', [PagoExpertisImportController::class, 'store'])
             ->name('pagos.store');
+        Route::post('/pagos/manual', [PagoExpertisImportController::class, 'storeManual'])
+            ->name('pagos.manual.store');
         Route::get('/{importacion}', [ImportacionExpertisController::class, 'show'])
             ->name('show');
         Route::get('/{importacion}/archivo', [ImportacionExpertisController::class, 'archivo'])

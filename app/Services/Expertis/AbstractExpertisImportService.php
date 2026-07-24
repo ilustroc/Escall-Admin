@@ -35,10 +35,20 @@ abstract class AbstractExpertisImportService
             ->where('hash_archivo', $hash)
             ->first();
 
-        if ($existente) {
+        if ($existente && $this->archivoYaProcesado($existente)) {
             $disk->delete($rutaTemporal);
 
             return ['duplicado' => true, 'importacion' => $existente];
+        }
+
+        if (
+            $existente
+            && $existente->estado !== ImportacionExpertis::ESTADO_FALLIDO
+            && $existente->updated_at?->isAfter(now()->subMinutes(15))
+        ) {
+            throw new RuntimeException(
+                'Este archivo tiene una importación en curso. Espera unos minutos antes de reintentar.',
+            );
         }
 
         $guardarOriginal = (bool) config('expertis.guardar_archivo_original', true);
@@ -54,16 +64,28 @@ abstract class AbstractExpertisImportService
             : '';
 
         try {
-            $importacion = ImportacionExpertis::create([
+            $importacion = $existente ?? new ImportacionExpertis;
+            $importacion->fill([
                 'user_id' => $userId,
                 'tipo' => $tipo,
                 'nombre_original' => mb_substr($nombreOriginal, 0, 255),
-                'nombre_guardado' => $nombreGuardado,
-                'ruta_archivo' => $rutaFinal,
+                'nombre_guardado' => $existente?->nombre_guardado ?? '',
+                'ruta_archivo' => $existente?->ruta_archivo ?? '',
                 'hash_archivo' => $hash,
                 'estado' => ImportacionExpertis::ESTADO_VALIDANDO,
+                'total_filas' => 0,
+                'filas_insertadas' => 0,
+                'filas_actualizadas' => 0,
+                'filas_duplicadas' => 0,
+                'filas_error' => 0,
+                'fecha_minima' => null,
+                'fecha_maxima' => null,
                 'iniciado_at' => now(),
+                'finalizado_at' => null,
+                'resumen' => null,
+                'mensaje_error' => null,
             ]);
+            $importacion->save();
         } catch (QueryException $e) {
             $existente = ImportacionExpertis::query()
                 ->where('tipo', $tipo)
@@ -74,18 +96,35 @@ abstract class AbstractExpertisImportService
                 throw $e;
             }
 
-            $disk->delete($rutaTemporal);
+            if ($this->archivoYaProcesado($existente)) {
+                $disk->delete($rutaTemporal);
 
-            return ['duplicado' => true, 'importacion' => $existente];
+                return ['duplicado' => true, 'importacion' => $existente];
+            }
+
+            throw new RuntimeException(
+                'Este archivo tiene una importación en curso. Espera unos minutos antes de reintentar.',
+                0,
+                $e,
+            );
         }
 
         try {
             if ($guardarOriginal) {
-                $disk->makeDirectory(dirname($rutaFinal));
-                if (! $disk->move($rutaTemporal, $rutaFinal)) {
-                    throw new RuntimeException('No se pudo mover el XLSX al almacenamiento privado.');
+                $rutaAnterior = $importacion->ruta_archivo;
+                $rutaProceso = $this->promoverArchivo(
+                    $rutaTemporal,
+                    $rutaFinal,
+                    $hash,
+                );
+
+                if (
+                    $rutaAnterior !== ''
+                    && $rutaAnterior !== $rutaFinal
+                    && $disk->exists($rutaAnterior)
+                ) {
+                    $disk->delete($rutaAnterior);
                 }
-                $rutaProceso = $disk->path($rutaFinal);
             } else {
                 $rutaProceso = $rutaAbsolutaTemporal;
             }
@@ -94,7 +133,11 @@ abstract class AbstractExpertisImportService
             throw $e;
         }
 
-        $importacion->update(['estado' => ImportacionExpertis::ESTADO_PROCESANDO]);
+        $importacion->update([
+            'estado' => ImportacionExpertis::ESTADO_PROCESANDO,
+            'nombre_guardado' => $nombreGuardado,
+            'ruta_archivo' => $rutaFinal,
+        ]);
 
         return [
             'duplicado' => false,
@@ -137,16 +180,20 @@ abstract class AbstractExpertisImportService
             'exception' => $excepcion,
         ]);
 
-        $importacion->update([
-            'estado' => ImportacionExpertis::ESTADO_FALLIDO,
-            'total_filas' => $estadisticas['total'] ?? $importacion->total_filas,
-            'filas_insertadas' => $estadisticas['insertadas'] ?? $importacion->filas_insertadas,
-            'filas_actualizadas' => $estadisticas['actualizadas'] ?? $importacion->filas_actualizadas,
-            'filas_duplicadas' => $estadisticas['duplicadas'] ?? $importacion->filas_duplicadas,
-            'filas_error' => $estadisticas['errores'] ?? $importacion->filas_error,
-            'finalizado_at' => now(),
-            'mensaje_error' => 'La importación no pudo completarse. Revisa el registro de la aplicación.',
-        ]);
+        ImportacionExpertis::query()
+            ->whereKey($importacion->id)
+            ->update([
+                'estado' => ImportacionExpertis::ESTADO_FALLIDO,
+                'total_filas' => $estadisticas['total'] ?? $importacion->total_filas,
+                'filas_insertadas' => $estadisticas['insertadas'] ?? $importacion->filas_insertadas,
+                'filas_actualizadas' => $estadisticas['actualizadas'] ?? $importacion->filas_actualizadas,
+                'filas_duplicadas' => $estadisticas['duplicadas'] ?? $importacion->filas_duplicadas,
+                'filas_error' => $estadisticas['errores'] ?? $importacion->filas_error,
+                'finalizado_at' => now(),
+                'mensaje_error' => 'La importación no pudo completarse. Revisa el registro de la aplicación.',
+            ]);
+
+        $importacion->refresh();
     }
 
     protected function limpiarTemporal(?string $rutaTemporal): void
@@ -165,5 +212,51 @@ abstract class AbstractExpertisImportService
         if (! isset($estadisticas['fecha_maxima']) || $fecha > $estadisticas['fecha_maxima']) {
             $estadisticas['fecha_maxima'] = $fecha;
         }
+    }
+
+    private function archivoYaProcesado(ImportacionExpertis $importacion): bool
+    {
+        return in_array(
+            $importacion->estado,
+            ImportacionExpertis::ESTADOS_ARCHIVO_PROCESADO,
+            true,
+        );
+    }
+
+    private function promoverArchivo(
+        string $rutaTemporal,
+        string $rutaFinal,
+        string $hashEsperado,
+    ): string {
+        $disk = Storage::disk('local');
+        $disk->makeDirectory(dirname($rutaFinal));
+
+        if (! $disk->move($rutaTemporal, $rutaFinal)) {
+            if ($disk->exists($rutaFinal)) {
+                $disk->delete($rutaFinal);
+            }
+
+            if (! $disk->copy($rutaTemporal, $rutaFinal)) {
+                throw new RuntimeException(
+                    'No se pudo guardar el XLSX en el almacenamiento privado.',
+                );
+            }
+
+            $disk->delete($rutaTemporal);
+        }
+
+        $rutaAbsoluta = $disk->path($rutaFinal);
+        if (
+            ! is_file($rutaAbsoluta)
+            || ! hash_equals($hashEsperado, hash_file('sha256', $rutaAbsoluta))
+        ) {
+            $disk->delete($rutaFinal);
+
+            throw new RuntimeException(
+                'El XLSX guardado no superó la verificación de integridad.',
+            );
+        }
+
+        return $rutaAbsoluta;
     }
 }

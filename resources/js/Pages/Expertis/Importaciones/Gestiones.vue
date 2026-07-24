@@ -11,7 +11,7 @@ defineProps({
 <template>
     <AppLayout
         title="Importar gestiones Expertis"
-        subtitle="Carga acumulados o archivos diarios sin generar duplicados físicos."
+        subtitle="Reconoce los 17 campos operativos de Expertis/JZG y evita duplicados físicos."
         :breadcrumbs="['Operativo', 'Cargas', 'Expertis · Gestiones']"
     >
         <ExpertisImportForm

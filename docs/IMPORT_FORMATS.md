@@ -27,6 +27,8 @@ Columnas admitidas:
 | Medio Gestión | No | LLAMADA |
 
 También se aceptan variantes sin tildes, en mayúsculas/minúsculas, con guiones bajos o espacios repetidos.
+Este listado coincide con el archivo operativo recibido de Expertis/JZG; las 17 columnas se
+conservan en `gestiones_expertis`.
 
 ## Pagos
 
@@ -39,6 +41,10 @@ También se aceptan variantes sin tildes, en mayúsculas/minúsculas, con guione
 | TIPO DE ACUERDO | No | CUOTA |
 | RECAUDO | No | BANCO |
 
+Los pagos también pueden registrarse individualmente desde **Cargas → Expertis Pagos →
+Registrar pago manual**. El formulario solicita los mismos datos y exige la cuenta en formato
+`DNI-CARTERA`.
+
 ## Fechas y horas
 
 Fechas:
@@ -46,6 +52,8 @@ Fechas:
 - fecha real de Excel;
 - `dd/mm/yyyy`;
 - `yyyy-mm-dd`.
+- cualquiera de los formatos anteriores seguido de `HH:mm` o `HH:mm:ss`, por ejemplo
+  `1/01/2025 00:00`.
 
 Horas:
 
@@ -54,6 +62,7 @@ Horas:
 - `HH:mm:ss`.
 
 Si la hora está vacía, `fecha_hora` usa `00:00:00`.
+El literal textual `NULL` se interpreta como un valor vacío en campos opcionales.
 
 ## Montos
 
@@ -74,7 +83,7 @@ La pantalla:
 1. valida tamaño, extensión y contenido;
 2. detecta encabezados;
 3. muestra las columnas faltantes;
-4. presenta las primeras 20 filas;
+4. presenta las primeras 20 filas con fechas y horas ya convertidas a texto legible;
 5. solicita confirmación.
 
 Un archivo con columnas obligatorias faltantes no obtiene token de importación y no escribe registros.
@@ -87,7 +96,10 @@ Un archivo con columnas obligatorias faltantes no obtiene token de importación 
 - Pago con monto cero o negativo: la fila se registra como error.
 - Tipificación nueva: la gestión se importa, pero queda sin peso y aparece en el resumen de no reconocidas.
 - Reenviar el mismo archivo: se identifica por SHA-256 y no se reprocesa.
+- Reintentar un archivo cuyo intento anterior falló: reutiliza la auditoría fallida y vuelve a
+  procesarlo; solo una importación completada se anuncia como duplicada.
 - Repetir un pago idéntico: se ignora porque el proveedor no entrega un ID transaccional que permita distinguirlo.
+- Cuenta manual sin cartera: usa siempre `DNI-CARTERA`, por ejemplo `47752785-QAPAQ`.
 
 ## Ejemplos
 

@@ -1,1 +1,0 @@
-import{i}from"./app-DA2YoaHS.js";function c(){let n;const e=i({open:!1,title:"Confirmar acción",message:"¿Deseas continuar?",confirmText:"Confirmar",tone:"danger"});function t(r={}){return Object.assign(e,r,{open:!0}),new Promise(a=>{n=a})}function o(r){e.open=!1,n==null||n(r),n=void 0}return{confirmation:e,ask:t,confirm:()=>o(!0),cancel:()=>o(!1)}}export{c as u};

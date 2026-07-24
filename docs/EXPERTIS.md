@@ -12,6 +12,7 @@ Expertis mantiene sus datos aislados del flujo operativo actual, pero comparte l
   - `ExpertisSpreadsheetService`: lectura streaming con OpenSpout;
   - `NormalizadorExpertisService`: encabezados, documentos, fechas, horas, montos y hashes;
   - importadores de gestiones y pagos: lotes, transacciones y auditoría;
+  - registro manual de pagos: la misma normalización, hash y trazabilidad que el XLSX;
   - `ExpertisImportWorkflowService`: preview, token temporal y ejecución de importaciones;
 - `app/Queries/Expertis`:
   - `ExpertisReportQuery`: filtros, `UNICO`, pagos válidos y agregaciones;
@@ -47,15 +48,19 @@ Conserva cuenta visible, clave normalizada, monto y `hash_fila` único. Un pago 
 - El DNI visible se mantiene como texto y se completa hasta ocho dígitos.
 - La clave de cruce elimina ceros iniciales solo de la parte documental.
 - Teléfonos conservan únicamente dígitos.
-- Fechas aceptan valores de Excel, `dd/mm/yyyy` y `yyyy-mm-dd`.
+- Fechas aceptan valores de Excel, `dd/mm/yyyy`, `yyyy-mm-dd` y esos mismos formatos con hora.
 - Montos aceptan símbolos de moneda y separadores decimales comunes.
 - Textos de clasificación se almacenan en mayúsculas.
+- El literal `NULL` en un campo opcional se almacena como valor nulo.
 
 ## Duplicados
 
 ### Archivo
 
 Se calcula SHA-256 del XLSX original. La combinación de tipo y hash es única.
+Solo los estados completados bloquean el mismo hash. Un intento fallido puede reintentarse y
+reutiliza la misma fila de auditoría, mientras que un proceso activo reciente queda protegido
+contra ejecuciones concurrentes.
 
 ### Gestión
 
@@ -84,6 +89,10 @@ Los lotes usan transacciones cortas, `insertOrIgnore` y `upsert`. Nunca se aplic
 El hash usa cuenta normalizada, fecha, monto a dos decimales, ejecutivo, tipo de acuerdo y recaudo.
 
 Dos pagos completamente idénticos son indistinguibles porque el archivo no incluye un identificador único de transacción. El segundo se contabiliza como duplicado.
+
+El registro manual usa exactamente esa misma regla. Cada intento queda en
+`importaciones_expertis` con usuario, fecha y `origen = manual`, pero sin crear un archivo
+ficticio ni habilitar una descarga inexistente.
 
 ## Peso y `UNICO`
 
@@ -134,6 +143,8 @@ El normalizador tolera `S/`, `S/.`, espacios, punto o coma decimal y texto poste
 - Todas las rutas están bajo `auth` y CSRF.
 - La petición comprueba extensión, MIME y estructura ZIP interna del XLSX.
 - Los archivos se guardan bajo `storage/app/private/expertis`.
+- Al promover un XLSX desde la vista previa se intenta moverlo y, si el sistema operativo
+  bloquea temporalmente el renombrado, se usa copia verificada por SHA-256 antes de procesarlo.
 - Las descargas pasan por un controlador autenticado; nunca exponen la ruta física.
 - Las consultas usan Eloquent o Query Builder parametrizado.
 - Las excepciones internas se registran y se muestra un mensaje genérico.

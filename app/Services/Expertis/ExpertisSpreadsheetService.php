@@ -90,7 +90,7 @@ class ExpertisSpreadsheetService
                     }
 
                     if (count($vistaPrevia) < $limite) {
-                        $vistaPrevia[] = $this->asociar($valores, $mapa);
+                        $vistaPrevia[] = $this->asociar($valores, $mapa, true);
                     }
 
                     if (count($vistaPrevia) >= $limite) {
@@ -180,16 +180,39 @@ class ExpertisSpreadsheetService
         }, $encabezados);
     }
 
-    private function asociar(array $valores, array $mapa): array
-    {
+    private function asociar(
+        array $valores,
+        array $mapa,
+        bool $paraVistaPrevia = false,
+    ): array {
         $fila = [];
         foreach ($mapa as $indice => $clave) {
             if ($clave !== null) {
-                $fila[$clave] = $valores[$indice] ?? null;
+                $valor = $valores[$indice] ?? null;
+                $fila[$clave] = $paraVistaPrevia
+                    ? $this->valorVistaPrevia($clave, $valor)
+                    : $valor;
             }
         }
 
         return $fila;
+    }
+
+    private function valorVistaPrevia(string $clave, mixed $valor): mixed
+    {
+        if (in_array($clave, ['fecha', 'fecha_llamada', 'fecha_compromiso'], true)) {
+            return $this->normalizador->fecha($valor) ?? $valor;
+        }
+
+        if ($clave === 'hora') {
+            return $this->normalizador->hora($valor) ?? $valor;
+        }
+
+        if (! $valor instanceof \DateTimeInterface) {
+            return $valor;
+        }
+
+        return $valor->format('Y-m-d H:i:s');
     }
 
     private function filaVacia(array $valores): bool

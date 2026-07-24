@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as PhpSpreadsheetXlsxWriter;
 use Tests\TestCase;
 
 class ExpertisImportTest extends TestCase
@@ -109,6 +112,95 @@ class ExpertisImportTest extends TestCase
         $this->assertSame(2, $ultima->filas_duplicadas);
     }
 
+    public function test_importa_el_formato_real_de_gestiones_con_fechas_y_null_textuales(): void
+    {
+        $archivo = $this->crearXlsx(self::ENCABEZADOS_GESTIONES, [
+            [
+                'EXPERTIS',
+                'ESCALL',
+                '47752785',
+                'ANDERSON RODRIGUEZ MUÑOZ',
+                'QAPAQ',
+                'ANDERSON RODRIGUEZ',
+                'LUIS',
+                '980617080',
+                '1/01/2025 00:00',
+                'APLICATIVO2',
+                '07:53:17',
+                'CONTACTO EFECTIVO',
+                'PPM',
+                '31/01/2025 00:00',
+                500,
+                'Sustento de pago PPM - Liquidación',
+                'MANUAL',
+            ],
+            [
+                'JZG',
+                'ESCALL',
+                '05333190',
+                'SHEYLA NOEMI RUT RAMIREZ PACHECO',
+                'CREDINKA',
+                'NOEMIRP',
+                'SIN_EQUIPO',
+                '923051553',
+                '2/01/2025 00:00',
+                'CAMPANA JZG',
+                '12:17:00',
+                'CONTACTO EFECTIVO',
+                'TAT',
+                '',
+                0,
+                'NULL',
+                'DISCADOR',
+            ],
+        ]);
+
+        $this->importarGestiones($archivo);
+
+        $this->assertDatabaseCount('gestiones_expertis', 2);
+
+        $qapaq = GestionExpertis::query()->where('dni', '47752785')->firstOrFail();
+        $this->assertSame('EXPERTIS', $qapaq->canal_gestion);
+        $this->assertSame('ESCALL', $qapaq->canal_asignacion);
+        $this->assertSame('QAPAQ', $qapaq->cartera);
+        $this->assertSame('2025-01-01', $qapaq->fecha_llamada->toDateString());
+        $this->assertSame('07:53:17', $qapaq->hora);
+        $this->assertSame('2025-01-31', $qapaq->fecha_compromiso->toDateString());
+        $this->assertSame('500.00', $qapaq->monto);
+        $this->assertSame('MANUAL', $qapaq->medio_gestion);
+
+        $credinka = GestionExpertis::query()->where('dni', '05333190')->firstOrFail();
+        $this->assertSame('2025-01-02', $credinka->fecha_llamada->toDateString());
+        $this->assertSame('CAMPANA JZG', $credinka->campania);
+        $this->assertSame('DISCADOR', $credinka->medio_gestion);
+        $this->assertNull($credinka->observacion);
+        $this->assertNull($credinka->fecha_compromiso);
+    }
+
+    public function test_vista_previa_serializa_fechas_y_horas_de_excel_como_texto(): void
+    {
+        $fila = $this->filaGestion('21/07/2026');
+        $archivo = $this->crearXlsxConFechasExcel($fila);
+
+        $preview = $this->preview($archivo, 'gestiones');
+        $preview
+            ->assertOk()
+            ->assertJsonPath('preview.0.fecha_llamada', '2026-07-06')
+            ->assertJsonPath('preview.0.hora', '18:30:40')
+            ->assertJsonPath('preview.0.fecha_compromiso', '2026-07-09');
+
+        $this->actingAs($this->usuario)
+            ->post('/expertis/importaciones/gestiones', [
+                'preview_token' => $preview->json('token'),
+            ])
+            ->assertRedirect();
+
+        $gestion = GestionExpertis::firstOrFail();
+        $this->assertSame('2026-07-06', $gestion->fecha_llamada->toDateString());
+        $this->assertSame('18:30:40', $gestion->hora);
+        $this->assertSame('2026-07-09', $gestion->fecha_compromiso->toDateString());
+    }
+
     public function test_mismo_archivo_completo_se_detecta_como_duplicado(): void
     {
         $archivo = $this->crearXlsx(self::ENCABEZADOS_GESTIONES, [
@@ -123,6 +215,47 @@ class ExpertisImportTest extends TestCase
             'preview_token' => $token,
         ])->assertRedirect();
 
+        $this->assertDatabaseCount('importaciones_expertis', 1);
+        $this->assertDatabaseCount('gestiones_expertis', 1);
+    }
+
+    public function test_importacion_fallida_con_el_mismo_hash_se_puede_reintentar(): void
+    {
+        $archivo = $this->crearXlsx(self::ENCABEZADOS_GESTIONES, [
+            $this->filaGestion('21/07/2026'),
+        ]);
+        $fallida = ImportacionExpertis::create([
+            'user_id' => $this->usuario->id,
+            'tipo' => ImportacionExpertis::TIPO_GESTIONES,
+            'nombre_original' => 'intento-fallido.xlsx',
+            'nombre_guardado' => '',
+            'ruta_archivo' => '',
+            'hash_archivo' => hash_file('sha256', $archivo),
+            'estado' => ImportacionExpertis::ESTADO_FALLIDO,
+            'mensaje_error' => 'No se pudo guardar el archivo.',
+            'iniciado_at' => now()->subMinute(),
+            'finalizado_at' => now()->subMinute(),
+        ]);
+
+        $preview = $this->preview($archivo, 'gestiones');
+        $preview
+            ->assertOk()
+            ->assertJsonPath('archivo_duplicado', null)
+            ->assertJsonPath('columnas_faltantes', []);
+
+        $this->actingAs($this->usuario)
+            ->post('/expertis/importaciones/gestiones', [
+                'preview_token' => $preview->json('token'),
+            ])
+            ->assertRedirect();
+
+        $fallida->refresh();
+        $this->assertSame(ImportacionExpertis::ESTADO_COMPLETADO, $fallida->estado);
+        $this->assertSame(1, $fallida->total_filas);
+        $this->assertSame(1, $fallida->filas_insertadas);
+        $this->assertNull($fallida->mensaje_error);
+        $this->assertNotSame('', $fallida->ruta_archivo);
+        Storage::disk('local')->assertExists($fallida->ruta_archivo);
         $this->assertDatabaseCount('importaciones_expertis', 1);
         $this->assertDatabaseCount('gestiones_expertis', 1);
     }
@@ -202,6 +335,65 @@ class ExpertisImportTest extends TestCase
         $this->assertSame(1, ImportacionExpertis::first()->filas_duplicadas);
     }
 
+    public function test_pago_manual_se_registra_con_auditoria_y_no_se_duplica(): void
+    {
+        $datos = [
+            'fecha' => '2025-01-31',
+            'cuenta' => '47752785-qapaq',
+            'monto' => 500,
+            'ejecutivo' => 'Anderson Rodriguez',
+            'tipo_acuerdo' => 'Cuota',
+            'recaudo' => 'Aplicativo',
+        ];
+
+        $this->actingAs($this->usuario)
+            ->post('/expertis/importaciones/pagos/manual', $datos)
+            ->assertRedirect('/expertis/importaciones/pagos?modo=manual')
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('pagos_expertis', 1);
+        $pago = PagoExpertis::firstOrFail();
+        $this->assertSame('47752785-QAPAQ', $pago->cuenta);
+        $this->assertSame('47752785-QAPAQ', $pago->cuenta_normalizada);
+        $this->assertSame('47752785', $pago->dni);
+        $this->assertSame('500.00', $pago->monto);
+        $this->assertSame('ANDERSON RODRIGUEZ', $pago->ejecutivo);
+
+        $auditoria = ImportacionExpertis::firstOrFail();
+        $this->assertSame($this->usuario->id, $auditoria->user_id);
+        $this->assertSame('manual', $auditoria->resumen['origen']);
+        $this->assertSame(1, $auditoria->filas_insertadas);
+        $this->assertSame('', $auditoria->ruta_archivo);
+        $this->assertSame($auditoria->id, $pago->importacion_expertis_id);
+
+        $this->actingAs($this->usuario)
+            ->post('/expertis/importaciones/pagos/manual', $datos)
+            ->assertSessionHas('warning');
+
+        $this->assertDatabaseCount('pagos_expertis', 1);
+        $this->assertDatabaseCount('importaciones_expertis', 2);
+        $this->assertSame(
+            ImportacionExpertis::ESTADO_DUPLICADO,
+            ImportacionExpertis::latest('id')->firstOrFail()->estado,
+        );
+    }
+
+    public function test_pago_manual_valida_cuenta_y_monto(): void
+    {
+        $this->actingAs($this->usuario)
+            ->from('/expertis/importaciones/pagos?modo=manual')
+            ->post('/expertis/importaciones/pagos/manual', [
+                'fecha' => '2025-01-31',
+                'cuenta' => '47752785',
+                'monto' => 0,
+            ])
+            ->assertRedirect('/expertis/importaciones/pagos?modo=manual')
+            ->assertSessionHasErrors(['cuenta', 'monto']);
+
+        $this->assertDatabaseCount('pagos_expertis', 0);
+        $this->assertDatabaseCount('importaciones_expertis', 0);
+    }
+
     private function importarGestiones(string $archivo): void
     {
         $preview = $this->preview($archivo, 'gestiones');
@@ -259,6 +451,30 @@ class ExpertisImportTest extends TestCase
             $writer->addRow(Row::fromValues($fila));
         }
         $writer->close();
+
+        return $ruta;
+    }
+
+    private function crearXlsxConFechasExcel(array $fila): string
+    {
+        $ruta = sys_get_temp_dir().DIRECTORY_SEPARATOR.'expertis_excel_'.Str::uuid().'.xlsx';
+        $this->temporales[] = $ruta;
+
+        $fila[8] = ExcelDate::PHPToExcel(new \DateTimeImmutable('2026-07-06 00:00:00'));
+        $fila[10] = ((18 * 60 * 60) + (30 * 60) + 40) / 86400;
+        $fila[13] = ExcelDate::PHPToExcel(new \DateTimeImmutable('2026-07-09 00:00:00'));
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray(self::ENCABEZADOS_GESTIONES, null, 'A1');
+        $sheet->fromArray($fila, null, 'A2');
+        $sheet->getStyle('I2')->getNumberFormat()->setFormatCode('dd/mm/yyyy hh:mm');
+        $sheet->getStyle('K2')->getNumberFormat()->setFormatCode('hh:mm:ss');
+        $sheet->getStyle('N2')->getNumberFormat()->setFormatCode('dd/mm/yyyy hh:mm');
+
+        $writer = new PhpSpreadsheetXlsxWriter($spreadsheet);
+        $writer->save($ruta);
+        $spreadsheet->disconnectWorksheets();
 
         return $ruta;
     }

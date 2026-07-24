@@ -7,6 +7,7 @@ import AppInput from '../../../Components/AppInput.vue';
 import AppPagination from '../../../Components/AppPagination.vue';
 import AppSelect from '../../../Components/AppSelect.vue';
 import AppTable from '../../../Components/AppTable.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
 import StatCard from '../../../Components/StatCard.vue';
 import AppLayout from '../../../Layouts/AppLayout.vue';
 
@@ -86,6 +87,20 @@ function clearFilters() {
         subtitle="Pagos deduplicados y relación con la gestión válida más reciente."
         :breadcrumbs="['Analítica', 'Tablas', 'Pagos Expertis']"
     >
+        <PageHeader
+            title="Pagos registrados"
+            description="Consulta pagos importados y registros individuales con la misma regla de deduplicación."
+        >
+            <template #actions>
+                <AppButton href="/expertis/importaciones/pagos?modo=manual">
+                    Registrar pago manual
+                </AppButton>
+                <AppButton href="/expertis/importaciones/pagos" variant="secondary">
+                    Importar XLSX
+                </AppButton>
+            </template>
+        </PageHeader>
+
         <div class="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Monto total" :value="money(resumen.monto_total)" tone="success" />
             <StatCard label="Cantidad de pagos" :value="resumen.cantidad_pagos" tone="info" />

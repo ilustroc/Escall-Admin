@@ -168,15 +168,14 @@ class GestionExpertisImportService extends AbstractExpertisImportService
 
         $horaOriginal = $fila['hora'] ?? null;
         $hora = $this->normalizador->hora($horaOriginal);
-        if ($horaOriginal !== null && trim((string) $horaOriginal) !== '' && ! $hora) {
+        if ($this->tieneValor($horaOriginal) && ! $hora) {
             throw new \InvalidArgumentException('La hora no tiene un formato válido.');
         }
 
         $fechaCompromisoOriginal = $fila['fecha_compromiso'] ?? null;
         $fechaCompromiso = $this->normalizador->fecha($fechaCompromisoOriginal);
         if (
-            $fechaCompromisoOriginal !== null
-            && trim((string) $fechaCompromisoOriginal) !== ''
+            $this->tieneValor($fechaCompromisoOriginal)
             && ! $fechaCompromiso
         ) {
             throw new \InvalidArgumentException('La Fecha Compromiso no tiene un formato válido.');
@@ -184,7 +183,7 @@ class GestionExpertisImportService extends AbstractExpertisImportService
 
         $montoOriginal = $fila['monto'] ?? null;
         $monto = $this->normalizador->monto($montoOriginal);
-        if ($montoOriginal !== null && trim((string) $montoOriginal) !== '' && $monto === null) {
+        if ($this->tieneValor($montoOriginal) && $monto === null) {
             throw new \InvalidArgumentException('El monto no tiene un formato válido.');
         }
 
@@ -389,5 +388,18 @@ class GestionExpertisImportService extends AbstractExpertisImportService
         }
 
         return $cambios;
+    }
+
+    private function tieneValor(mixed $valor): bool
+    {
+        if ($valor === null) {
+            return false;
+        }
+
+        if ($valor instanceof \DateTimeInterface) {
+            return true;
+        }
+
+        return trim((string) $valor) !== '';
     }
 }
