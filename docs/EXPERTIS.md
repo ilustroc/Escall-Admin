@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Expertis es un módulo aislado del flujo operativo legacy. Conserva la autenticación por sesión y se integra mediante páginas Inertia, pero no escribe en `data`, `gestiones`, `pagos` ni en las tablas de tipificación actuales.
+Expertis mantiene sus datos aislados del flujo operativo actual, pero comparte la misma arquitectura Vue, Inertia, Controllers, FormRequests, Services y Queries. Conserva la autenticación por sesión y no escribe en `data`, `gestiones`, `pagos` ni en las tablas de tipificación actuales.
 
 ## Capas
 
@@ -12,7 +12,10 @@ Expertis es un módulo aislado del flujo operativo legacy. Conserva la autentica
   - `ExpertisSpreadsheetService`: lectura streaming con OpenSpout;
   - `NormalizadorExpertisService`: encabezados, documentos, fechas, horas, montos y hashes;
   - importadores de gestiones y pagos: lotes, transacciones y auditoría;
-  - `ExpertisReportQueryService`: filtros, `UNICO`, pagos válidos y agregaciones.
+  - `ExpertisImportWorkflowService`: preview, token temporal y ejecución de importaciones;
+- `app/Queries/Expertis`:
+  - `ExpertisReportQuery`: filtros, `UNICO`, pagos válidos y agregaciones;
+  - `ExpertisDashboardQuery` e `ExpertisImportHistoryQuery`: indicadores e historial.
 - `app/Models`: relaciones de importaciones, errores, tipificaciones, gestiones y pagos.
 - `resources/js`: layout, componentes y páginas Vue 3.
 
