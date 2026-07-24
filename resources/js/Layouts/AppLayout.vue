@@ -73,17 +73,29 @@ function closeMobile() {
                 sidebarCollapsed ? 'w-20' : 'w-[272px]',
             ]"
         >
-            <div class="flex h-20 items-center justify-between border-b border-white/10 px-4">
-                <Link href="/" class="flex min-w-0 items-center gap-3" @click="closeMobile">
-                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white p-1.5">
-                        <img :src="'/img/logotipo-escallperu.png'" alt="ESCALL Perú" class="max-h-full object-contain">
-                    </span>
-                    <span v-if="!sidebarCollapsed" class="truncate">
-                        <strong class="block text-sm tracking-wide">ESCALL PERÚ</strong>
-                        <small class="text-[10px] uppercase tracking-[0.2em] text-blue-200">Administración</small>
-                    </span>
+            <div
+                class="flex h-20 items-center border-b border-white/10 px-4"
+                :class="sidebarCollapsed ? 'justify-center' : 'justify-between'">
+                <Link
+                    href="/"
+                    class="flex min-w-0 items-center justify-center overflow-hidden"
+                    @click="closeMobile">
+                    <img
+                        :src="'/img/logotipo-escallperu.png'"
+                        alt="ESCALL Perú"
+                        class="w-auto object-contain transition-all duration-300"
+                        :class="sidebarCollapsed
+                            ? 'h-11 max-w-12'
+                            : 'h-14 max-w-[205px]'">
                 </Link>
-                <button class="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 lg:hidden" @click="closeMobile">
+
+                <button
+                    v-if="!sidebarCollapsed"
+                    type="button"
+                    class="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white lg:hidden"
+                    aria-label="Cerrar menú"
+                    @click="closeMobile"
+                >
                     <XMarkIcon class="h-5 w-5" />
                 </button>
             </div>
