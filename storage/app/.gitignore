@@ -1,3 +1,5 @@
 *
 !public/
+!examples/
+!examples/*.xlsx
 !.gitignore
