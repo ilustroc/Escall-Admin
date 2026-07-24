@@ -10,8 +10,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Iniciar sesión | {{ $appName }}</title>
 
-  {{-- Tailwind CDN (sin Vite, sin build) --}}
-  <script src="https://cdn.tailwindcss.com"></script>
+  @vite(['resources/css/app.css'])
 </head>
 
 <body class="min-h-screen bg-slate-50 text-slate-800">
