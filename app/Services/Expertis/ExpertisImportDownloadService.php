@@ -4,12 +4,11 @@ namespace App\Services\Expertis;
 
 use App\Models\ImportacionExpertis;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExpertisImportDownloadService
 {
-    public function source(ImportacionExpertis $import): BinaryFileResponse
+    public function source(ImportacionExpertis $import): StreamedResponse
     {
         abort_unless(
             $import->ruta_archivo !== ''

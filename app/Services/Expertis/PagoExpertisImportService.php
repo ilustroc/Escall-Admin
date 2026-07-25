@@ -22,6 +22,8 @@ class PagoExpertisImportService extends AbstractExpertisImportService
         string $nombreOriginal,
         ?int $userId,
     ): array {
+        $this->prepararEjecucionLarga();
+
         $rutaTemporalAbsoluta = \Storage::disk('local')->path($rutaTemporal);
         $inspeccion = $this->spreadsheet->inspeccionar(
             $rutaTemporalAbsoluta,
@@ -56,7 +58,14 @@ class PagoExpertisImportService extends AbstractExpertisImportService
         ];
         $lote = [];
         $errores = [];
-        $tamanoLote = (int) config('expertis.chunk_size', 1000);
+        $tamanoLote = max(1, (int) config('expertis.chunk_size', 1000));
+        $hashesRecuperados = PagoExpertis::query()
+            ->where('importacion_expertis_id', $importacion->id)
+            ->pluck('hash_fila')
+            ->flip()
+            ->all();
+
+        $importacion->errores()->delete();
 
         DB::connection()->disableQueryLog();
 
@@ -91,25 +100,38 @@ class PagoExpertisImportService extends AbstractExpertisImportService
                     ];
                 }
 
-                if (count($lote) >= $tamanoLote) {
-                    $this->procesarLote($lote, $estadisticas);
+                if ($estadisticas['total'] % $tamanoLote === 0) {
+                    if ($lote !== []) {
+                        $this->procesarLote(
+                            $lote,
+                            $estadisticas,
+                            $hashesRecuperados,
+                        );
+                    }
                     $lote = [];
-                }
 
-                if (count($errores) >= $tamanoLote) {
-                    DB::table('errores_importacion_expertis')->insert($errores);
+                    if ($errores !== []) {
+                        DB::table('errores_importacion_expertis')->insert($errores);
+                    }
                     $errores = [];
+
+                    $this->actualizarProgreso($importacion, $estadisticas);
                 }
             }
 
             if ($lote !== []) {
-                $this->procesarLote($lote, $estadisticas);
+                $this->procesarLote(
+                    $lote,
+                    $estadisticas,
+                    $hashesRecuperados,
+                );
             }
 
             if ($errores !== []) {
                 DB::table('errores_importacion_expertis')->insert($errores);
             }
 
+            $this->actualizarProgreso($importacion, $estadisticas);
             $this->completar($importacion, $estadisticas);
         } catch (\Throwable $e) {
             $this->marcarFallo($importacion, $e, $estadisticas);
@@ -124,9 +146,16 @@ class PagoExpertisImportService extends AbstractExpertisImportService
         ];
     }
 
-    private function procesarLote(array $lote, array &$estadisticas): void
-    {
-        DB::transaction(function () use ($lote, &$estadisticas): void {
+    private function procesarLote(
+        array $lote,
+        array &$estadisticas,
+        array &$hashesRecuperados,
+    ): void {
+        DB::transaction(function () use (
+            $lote,
+            &$estadisticas,
+            &$hashesRecuperados,
+        ): void {
             $unicos = [];
             foreach ($lote as $fila) {
                 if (isset($unicos[$fila['hash_fila']])) {
@@ -139,13 +168,19 @@ class PagoExpertisImportService extends AbstractExpertisImportService
 
             $hashesExistentes = PagoExpertis::query()
                 ->whereIn('hash_fila', array_keys($unicos))
-                ->pluck('hash_fila')
-                ->flip();
+                ->pluck('importacion_expertis_id', 'hash_fila');
 
             $nuevos = [];
             foreach ($unicos as $hash => $fila) {
                 if ($hashesExistentes->has($hash)) {
-                    $estadisticas['duplicadas']++;
+                    $esFilaRecuperada = isset($hashesRecuperados[$hash]);
+                    if ($esFilaRecuperada) {
+                        unset($hashesRecuperados[$hash]);
+                    }
+
+                    $estadisticas[
+                        $esFilaRecuperada ? 'insertadas' : 'duplicadas'
+                    ]++;
                 } else {
                     $nuevos[] = $fila;
                 }

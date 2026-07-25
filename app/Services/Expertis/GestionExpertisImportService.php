@@ -26,6 +26,8 @@ class GestionExpertisImportService extends AbstractExpertisImportService
         string $nombreOriginal,
         ?int $userId,
     ): array {
+        $this->prepararEjecucionLarga();
+
         $rutaTemporalAbsoluta = \Storage::disk('local')->path($rutaTemporal);
         $inspeccion = $this->spreadsheet->inspeccionar(
             $rutaTemporalAbsoluta,
@@ -61,7 +63,14 @@ class GestionExpertisImportService extends AbstractExpertisImportService
         $tipificacionesDesconocidas = [];
         $lote = [];
         $errores = [];
-        $tamanoLote = (int) config('expertis.chunk_size', 1000);
+        $tamanoLote = max(1, (int) config('expertis.chunk_size', 1000));
+        $hashesRecuperados = GestionExpertis::query()
+            ->where('importacion_expertis_id', $importacion->id)
+            ->pluck('hash_fila')
+            ->flip()
+            ->all();
+
+        $importacion->errores()->delete();
 
         DB::connection()->disableQueryLog();
         $tipificaciones = TipificacionExpertis::query()
@@ -102,24 +111,38 @@ class GestionExpertisImportService extends AbstractExpertisImportService
                     ];
                 }
 
-                if (count($lote) >= $tamanoLote) {
-                    $this->procesarLote($lote, $estadisticas);
+                if ($estadisticas['total'] % $tamanoLote === 0) {
+                    if ($lote !== []) {
+                        $this->procesarLote(
+                            $lote,
+                            $estadisticas,
+                            $hashesRecuperados,
+                        );
+                    }
                     $lote = [];
-                }
 
-                if (count($errores) >= $tamanoLote) {
-                    DB::table('errores_importacion_expertis')->insert($errores);
+                    if ($errores !== []) {
+                        DB::table('errores_importacion_expertis')->insert($errores);
+                    }
                     $errores = [];
+
+                    $this->actualizarProgreso($importacion, $estadisticas);
                 }
             }
 
             if ($lote !== []) {
-                $this->procesarLote($lote, $estadisticas);
+                $this->procesarLote(
+                    $lote,
+                    $estadisticas,
+                    $hashesRecuperados,
+                );
             }
 
             if ($errores !== []) {
                 DB::table('errores_importacion_expertis')->insert($errores);
             }
+
+            $this->actualizarProgreso($importacion, $estadisticas);
 
             $desconocidas = array_keys($tipificacionesDesconocidas);
             sort($desconocidas);
@@ -224,9 +247,16 @@ class GestionExpertisImportService extends AbstractExpertisImportService
         return $gestion;
     }
 
-    private function procesarLote(array $lote, array &$estadisticas): void
-    {
-        DB::transaction(function () use ($lote, &$estadisticas): void {
+    private function procesarLote(
+        array $lote,
+        array &$estadisticas,
+        array &$hashesRecuperados,
+    ): void {
+        DB::transaction(function () use (
+            $lote,
+            &$estadisticas,
+            &$hashesRecuperados,
+        ): void {
             $unicos = [];
             foreach ($lote as $fila) {
                 if (isset($unicos[$fila['hash_fila']])) {
@@ -284,8 +314,15 @@ class GestionExpertisImportService extends AbstractExpertisImportService
                 }
 
                 $cambios = $this->camposMasCompletos($existente, $fila);
+                $esFilaRecuperada = isset($hashesRecuperados[$hash]);
+                if ($esFilaRecuperada) {
+                    unset($hashesRecuperados[$hash]);
+                }
+
                 if ($cambios === []) {
-                    $estadisticas['duplicadas']++;
+                    $estadisticas[
+                        $esFilaRecuperada ? 'insertadas' : 'duplicadas'
+                    ]++;
 
                     continue;
                 }
@@ -296,7 +333,9 @@ class GestionExpertisImportService extends AbstractExpertisImportService
                     ['hash_fila' => $hash],
                     ['updated_at' => now()],
                 );
-                $estadisticas['actualizadas']++;
+                $estadisticas[
+                    $esFilaRecuperada ? 'insertadas' : 'actualizadas'
+                ]++;
             }
 
             if ($nuevos !== []) {

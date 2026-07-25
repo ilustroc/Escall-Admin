@@ -16,6 +16,19 @@ abstract class AbstractExpertisImportService
         protected readonly NormalizadorExpertisService $normalizador,
     ) {}
 
+    protected function prepararEjecucionLarga(): void
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
+
+        @ini_set('max_execution_time', '0');
+
+        if (function_exists('ignore_user_abort')) {
+            @ignore_user_abort(true);
+        }
+    }
+
     protected function iniciar(
         string $rutaTemporal,
         string $nombreOriginal,
@@ -167,6 +180,24 @@ abstract class AbstractExpertisImportService
             'resumen' => array_merge($estadisticas, $resumen),
             'mensaje_error' => null,
         ]);
+    }
+
+    protected function actualizarProgreso(
+        ImportacionExpertis $importacion,
+        array $estadisticas,
+    ): void {
+        ImportacionExpertis::query()
+            ->whereKey($importacion->id)
+            ->update([
+                'total_filas' => $estadisticas['total'] ?? 0,
+                'filas_insertadas' => $estadisticas['insertadas'] ?? 0,
+                'filas_actualizadas' => $estadisticas['actualizadas'] ?? 0,
+                'filas_duplicadas' => $estadisticas['duplicadas'] ?? 0,
+                'filas_error' => $estadisticas['errores'] ?? 0,
+                'fecha_minima' => $estadisticas['fecha_minima'] ?? null,
+                'fecha_maxima' => $estadisticas['fecha_maxima'] ?? null,
+                'updated_at' => now(),
+            ]);
     }
 
     protected function marcarFallo(

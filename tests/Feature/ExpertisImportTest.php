@@ -260,6 +260,64 @@ class ExpertisImportTest extends TestCase
         $this->assertDatabaseCount('gestiones_expertis', 1);
     }
 
+    public function test_reintento_conserva_y_contabiliza_filas_insertadas_antes_del_fallo(): void
+    {
+        $archivo = $this->crearXlsx(self::ENCABEZADOS_GESTIONES, [
+            $this->filaGestion('21/07/2026'),
+        ]);
+        $this->importarGestiones($archivo);
+
+        $importacion = ImportacionExpertis::firstOrFail();
+        $importacion->update([
+            'estado' => ImportacionExpertis::ESTADO_FALLIDO,
+            'total_filas' => 0,
+            'filas_insertadas' => 0,
+            'filas_actualizadas' => 0,
+            'filas_duplicadas' => 0,
+            'filas_error' => 0,
+            'finalizado_at' => now(),
+            'mensaje_error' => 'La ejecuciÃ³n anterior fue interrumpida.',
+        ]);
+
+        $preview = $this->preview($archivo, 'gestiones');
+        $preview
+            ->assertOk()
+            ->assertJsonPath('archivo_duplicado', null);
+
+        $this->actingAs($this->usuario)
+            ->post('/expertis/importaciones/gestiones', [
+                'preview_token' => $preview->json('token'),
+            ])
+            ->assertRedirect();
+
+        $importacion->refresh();
+        $this->assertSame(ImportacionExpertis::ESTADO_COMPLETADO, $importacion->estado);
+        $this->assertSame(1, $importacion->total_filas);
+        $this->assertSame(1, $importacion->filas_insertadas);
+        $this->assertSame(0, $importacion->filas_duplicadas);
+        $this->assertDatabaseCount('importaciones_expertis', 1);
+        $this->assertDatabaseCount('gestiones_expertis', 1);
+    }
+
+    public function test_archivo_original_importado_se_puede_descargar(): void
+    {
+        $archivo = $this->crearXlsx(self::ENCABEZADOS_GESTIONES, [
+            $this->filaGestion('21/07/2026'),
+        ]);
+        $this->importarGestiones($archivo);
+
+        $importacion = ImportacionExpertis::firstOrFail();
+        $respuesta = $this->actingAs($this->usuario)
+            ->get(route('expertis.importaciones.archivo', $importacion));
+
+        $respuesta
+            ->assertOk()
+            ->assertHeader(
+                'content-type',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            );
+    }
+
     public function test_dos_filas_iguales_en_el_mismo_archivo_no_se_duplican(): void
     {
         $fila = $this->filaGestion('21/07/2026');
