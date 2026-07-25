@@ -12,6 +12,7 @@ Expertis mantiene sus datos aislados del flujo operativo actual, pero comparte l
   - `ExpertisSpreadsheetService`: lectura streaming con OpenSpout;
   - `NormalizadorExpertisService`: encabezados, documentos, fechas, horas, montos y hashes;
   - importadores de gestiones y pagos: lotes, transacciones y auditoría;
+  - `ExpertisImportTemplateService`: plantillas XLSX oficiales para ambas importaciones;
   - registro manual de pagos: la misma normalización, hash y trazabilidad que el XLSX;
   - `ExpertisImportWorkflowService`: preview, token temporal y ejecución de importaciones;
 - `app/Queries/Expertis`:
@@ -146,5 +147,6 @@ El normalizador tolera `S/`, `S/.`, espacios, punto o coma decimal y texto poste
 - Al promover un XLSX desde la vista previa se intenta moverlo y, si el sistema operativo
   bloquea temporalmente el renombrado, se usa copia verificada por SHA-256 antes de procesarlo.
 - Las descargas pasan por un controlador autenticado; nunca exponen la ruta física.
+- Las plantillas XLSX se generan bajo demanda y son verificadas con el mismo lector del importador.
 - Las consultas usan Eloquent o Query Builder parametrizado.
 - Las excepciones internas se registran y se muestra un mensaje genérico.

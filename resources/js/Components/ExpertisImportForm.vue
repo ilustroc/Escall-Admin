@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
+import { ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
 
 import AppBadge from './AppBadge.vue';
 import AppButton from './AppButton.vue';
@@ -25,6 +26,11 @@ const props = defineProps({
     storeUrl: {
         type: String,
         required: true,
+    },
+
+    templateUrl: {
+        type: String,
+        default: null,
     },
 
     requiredColumns: {
@@ -233,12 +239,22 @@ function formatDateTime(value) {
                         </p>
                     </div>
 
-                    <AppBadge
-                        class="shrink-0"
-                        tone="info"
-                    >
-                        XLSX · {{ config.max_mb }} MB máx.
-                    </AppBadge>
+                    <div class="flex shrink-0 flex-wrap items-center gap-2">
+                        <AppButton
+                            v-if="templateUrl"
+                            :href="templateUrl"
+                            download
+                            variant="secondary"
+                            size="sm"
+                        >
+                            <ArrowDownTrayIcon class="h-4 w-4" />
+                            Descargar plantilla
+                        </AppButton>
+
+                        <AppBadge tone="info">
+                            XLSX · {{ config.max_mb }} MB máx.
+                        </AppBadge>
+                    </div>
                 </div>
 
                 <FileDropzone

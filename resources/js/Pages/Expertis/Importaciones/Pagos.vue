@@ -96,6 +96,7 @@ function submitManual() {
             type="pagos"
             preview-url="/expertis/importaciones/pagos/preview"
             store-url="/expertis/importaciones/pagos"
+            template-url="/expertis/importaciones/pagos/plantilla"
             :required-columns="['FECHA', 'CUENTA', 'MONTO']"
             :config="configuracion"
             :last-import="ultimaImportacion"

@@ -218,6 +218,10 @@ class ExpertisSpreadsheetService
     private function filaVacia(array $valores): bool
     {
         foreach ($valores as $valor) {
+            if ($valor instanceof \DateTimeInterface) {
+                return false;
+            }
+
             if ($valor !== null && trim((string) $valor) !== '') {
                 return false;
             }

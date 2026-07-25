@@ -1,6 +1,8 @@
 # Formatos de importación Expertis
 
 Usa archivos `.xlsx`. La primera fila no vacía de la primera hoja se interpreta como encabezado.
+Las pantallas de **Expertis Gestiones** y **Expertis Pagos** incluyen el botón
+**Descargar plantilla**, que entrega un XLSX válido con todos los encabezados y una fila de ejemplo.
 
 ## Gestiones
 
@@ -91,6 +93,7 @@ Un archivo con columnas obligatorias faltantes no obtiene token de importación 
 ## Errores frecuentes
 
 - Guardar CSV con extensión `.xlsx`: el contenido será rechazado.
+- Usar una plantilla distinta: descarga la plantilla oficial desde la misma pantalla de carga.
 - DNI convertido por Excel a notación científica: formatea la columna como texto antes de exportar.
 - Fecha como texto no reconocible: usa uno de los formatos indicados.
 - Pago con monto cero o negativo: la fila se registra como error.

@@ -5,6 +5,7 @@ import { ArrowPathIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     href: { type: String, default: null },
+    download: { type: [Boolean, String], default: false },
     method: { type: String, default: 'get' },
     variant: { type: String, default: 'primary' },
     type: { type: String, default: 'button' },
@@ -36,8 +37,17 @@ const classes = computed(() => {
 </script>
 
 <template>
+    <a
+        v-if="href && download"
+        :href="href"
+        :class="classes"
+        :download="typeof download === 'string' ? download : ''"
+    >
+        <ArrowPathIcon v-if="loading" class="h-4 w-4 animate-spin" />
+        <slot />
+    </a>
     <Link
-        v-if="href"
+        v-else-if="href"
         :href="href"
         :method="method"
         :as="method === 'get' ? 'a' : 'button'"

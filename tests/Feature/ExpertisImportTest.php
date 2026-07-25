@@ -6,6 +6,7 @@ use App\Models\GestionExpertis;
 use App\Models\ImportacionExpertis;
 use App\Models\PagoExpertis;
 use App\Models\User;
+use App\Services\Expertis\ExpertisSpreadsheetService;
 use Database\Seeders\TipificacionesExpertisSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -393,6 +394,76 @@ class ExpertisImportTest extends TestCase
         $this->assertSame(1, ImportacionExpertis::first()->filas_duplicadas);
     }
 
+    public function test_importa_pagos_con_fecha_excel_en_la_primera_columna(): void
+    {
+        $archivo = $this->crearXlsxPagosConFechasExcel([
+            ['2026-02-03', '47780017-LOS ANDES', 277, 'ROBERTO HUAMONTE', 'PPM', '-'],
+            ['2026-02-03', '71742001-LOS ANDES', 1000, 'CLAUDIA ROMERO', 'PPC', '-'],
+            ['2026-02-05', '01839200-CREDINKA', 200, 'ROBERTO HUAMONTE', 'PAR', '-'],
+            ['2026-02-05', '40211919-OH', 1500, 'RUTH SANTAMARIA', 'PPC', '-'],
+        ]);
+
+        $preview = $this->preview($archivo, 'pagos');
+        $preview
+            ->assertOk()
+            ->assertJsonPath('columnas_faltantes', [])
+            ->assertJsonPath('preview.0.fecha', '2026-02-03')
+            ->assertJsonPath('preview.0.cuenta', '47780017-LOS ANDES');
+
+        $this->actingAs($this->usuario)
+            ->post('/expertis/importaciones/pagos', [
+                'preview_token' => $preview->json('token'),
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseCount('pagos_expertis', 4);
+        $pago = PagoExpertis::query()
+            ->where('cuenta', '01839200-CREDINKA')
+            ->firstOrFail();
+        $this->assertSame('2026-02-05', $pago->fecha->toDateString());
+        $this->assertSame('01839200', $pago->dni);
+        $this->assertSame('200.00', $pago->monto);
+        $this->assertSame('-', $pago->recaudo);
+
+        $importacion = ImportacionExpertis::firstOrFail();
+        $this->assertSame(4, $importacion->total_filas);
+        $this->assertSame(4, $importacion->filas_insertadas);
+        $this->assertSame(0, $importacion->filas_error);
+    }
+
+    public function test_plantillas_expertis_son_xlsx_validos_para_el_importador(): void
+    {
+        $casos = [
+            [
+                '/expertis/importaciones/gestiones/plantilla',
+                'plantilla_gestiones_expertis.xlsx',
+                ExpertisSpreadsheetService::GESTIONES,
+            ],
+            [
+                '/expertis/importaciones/pagos/plantilla',
+                'plantilla_pagos_expertis.xlsx',
+                ExpertisSpreadsheetService::PAGOS,
+            ],
+        ];
+
+        foreach ($casos as [$url, $nombre, $tipo]) {
+            $respuesta = $this->actingAs($this->usuario)->get($url);
+            $respuesta
+                ->assertOk()
+                ->assertDownload($nombre);
+
+            $ruta = sys_get_temp_dir().DIRECTORY_SEPARATOR.Str::uuid().'.xlsx';
+            $this->temporales[] = $ruta;
+            file_put_contents($ruta, $respuesta->streamedContent());
+
+            $inspeccion = app(ExpertisSpreadsheetService::class)
+                ->inspeccionar($ruta, $tipo);
+
+            $this->assertSame([], $inspeccion['columnas_faltantes']);
+            $this->assertCount(1, $inspeccion['preview']);
+        }
+    }
+
     public function test_pago_manual_se_registra_con_auditoria_y_no_se_duplica(): void
     {
         $datos = [
@@ -529,6 +600,35 @@ class ExpertisImportTest extends TestCase
         $sheet->getStyle('I2')->getNumberFormat()->setFormatCode('dd/mm/yyyy hh:mm');
         $sheet->getStyle('K2')->getNumberFormat()->setFormatCode('hh:mm:ss');
         $sheet->getStyle('N2')->getNumberFormat()->setFormatCode('dd/mm/yyyy hh:mm');
+
+        $writer = new PhpSpreadsheetXlsxWriter($spreadsheet);
+        $writer->save($ruta);
+        $spreadsheet->disconnectWorksheets();
+
+        return $ruta;
+    }
+
+    private function crearXlsxPagosConFechasExcel(array $filas): string
+    {
+        $ruta = sys_get_temp_dir().DIRECTORY_SEPARATOR.'pagos_excel_'.Str::uuid().'.xlsx';
+        $this->temporales[] = $ruta;
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray(
+            ['FECHA', 'CUENTA', 'MONTO', 'EJECUTIVO', 'TIPO DE ACUERDO', 'RECAUDO'],
+            null,
+            'A1',
+        );
+
+        foreach ($filas as $indice => $fila) {
+            $numeroFila = $indice + 2;
+            $fila[0] = ExcelDate::PHPToExcel(new \DateTimeImmutable($fila[0]));
+            $sheet->fromArray($fila, null, 'A'.$numeroFila);
+            $sheet->getStyle('A'.$numeroFila)
+                ->getNumberFormat()
+                ->setFormatCode('yyyy-mm-dd');
+        }
 
         $writer = new PhpSpreadsheetXlsxWriter($spreadsheet);
         $writer->save($ruta);

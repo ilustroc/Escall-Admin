@@ -7,6 +7,7 @@ use App\Http\Requests\Expertis\ConfirmarImportacionExpertisRequest;
 use App\Http\Requests\Expertis\ImportarPagosExpertisRequest;
 use App\Http\Requests\Expertis\RegistrarPagoManualExpertisRequest;
 use App\Models\ImportacionExpertis;
+use App\Services\Expertis\ExpertisImportTemplateService;
 use App\Services\Expertis\ExpertisImportWorkflowService;
 use App\Services\Expertis\ExpertisSpreadsheetService;
 use App\Services\Expertis\RegistrarPagoManualExpertisService;
@@ -15,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PagoExpertisImportController extends Controller
 {
@@ -35,6 +37,12 @@ class PagoExpertisImportController extends Controller
                 'ejecutivo' => $request->user()?->name ?? '',
             ],
         ]);
+    }
+
+    public function plantilla(
+        ExpertisImportTemplateService $templates,
+    ): StreamedResponse {
+        return $templates->pagos();
     }
 
     public function preview(

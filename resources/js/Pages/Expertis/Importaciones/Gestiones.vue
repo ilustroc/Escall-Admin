@@ -18,6 +18,7 @@ defineProps({
             type="gestiones"
             preview-url="/expertis/importaciones/gestiones/preview"
             store-url="/expertis/importaciones/gestiones"
+            template-url="/expertis/importaciones/gestiones/plantilla"
             :required-columns="['DNI', 'Cartera', 'Fecha Llamada', 'Nivel 2']"
             :config="configuracion"
             :last-import="ultimaImportacion"

@@ -17,12 +17,16 @@ Route::prefix('expertis')->name('expertis.')->group(function (): void {
         Route::get('/', [ImportacionExpertisController::class, 'index'])->name('index');
         Route::get('/gestiones', [GestionExpertisImportController::class, 'create'])
             ->name('gestiones.create');
+        Route::get('/gestiones/plantilla', [GestionExpertisImportController::class, 'plantilla'])
+            ->name('gestiones.plantilla');
         Route::post('/gestiones/preview', [GestionExpertisImportController::class, 'preview'])
             ->name('gestiones.preview');
         Route::post('/gestiones', [GestionExpertisImportController::class, 'store'])
             ->name('gestiones.store');
         Route::get('/pagos', [PagoExpertisImportController::class, 'create'])
             ->name('pagos.create');
+        Route::get('/pagos/plantilla', [PagoExpertisImportController::class, 'plantilla'])
+            ->name('pagos.plantilla');
         Route::post('/pagos/preview', [PagoExpertisImportController::class, 'preview'])
             ->name('pagos.preview');
         Route::post('/pagos', [PagoExpertisImportController::class, 'store'])
