@@ -78,6 +78,91 @@ const canImport = computed(() => (
     && !preview.value?.columnas_faltantes?.length
 ));
 
+function formatMegabytes(bytes) {
+    const megabytes = Number(bytes) / 1024 / 1024;
+
+    return new Intl.NumberFormat('es-PE', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    }).format(megabytes);
+}
+
+function replaceGenericUploadMessage(message) {
+    if (message === 'The archivo failed to upload.') {
+        return 'El servidor rechazó la subida del archivo. Revisa el límite de tamaño y la configuración temporal de PHP.';
+    }
+
+    return message;
+}
+
+function backendFileErrors(data) {
+    const messages = data?.errors?.archivo;
+
+    if (!Array.isArray(messages)) {
+        return [];
+    }
+
+    return messages
+        .filter((message) => typeof message === 'string' && message.trim())
+        .map((message) => replaceGenericUploadMessage(message.trim()));
+}
+
+function extractUploadError(exception) {
+    if (!exception.response) {
+        return 'No se pudo conectar con el servidor durante la carga. Verifica la conexión e intenta nuevamente.';
+    }
+
+    const status = Number(exception.response.status);
+    const data = exception.response.data;
+
+    if (status === 422) {
+        const messages = backendFileErrors(data);
+
+        if (messages.length) {
+            return messages.join(' ');
+        }
+
+        if (typeof data?.message === 'string' && data.message.trim()) {
+            return replaceGenericUploadMessage(data.message.trim());
+        }
+    }
+
+    if (status === 413) {
+        const messages = [
+            typeof data?.message === 'string'
+                ? replaceGenericUploadMessage(data.message.trim())
+                : '',
+            ...backendFileErrors(data),
+        ].filter((message, index, all) => (
+            message && all.indexOf(message) === index
+        ));
+
+        if (messages.length) {
+            return messages.join(' ');
+        }
+
+        return 'El servidor rechazó el archivo porque supera el límite de carga permitido (HTTP 413). Revisa upload_max_filesize, post_max_size y el límite del servidor web.';
+    }
+
+    if (status === 419) {
+        return 'Tu sesión venció. Actualiza la página e inicia nuevamente la carga.';
+    }
+
+    if (status === 401) {
+        return 'No tienes una sesión válida para subir el archivo.';
+    }
+
+    if (status === 403) {
+        return 'No tienes permiso para realizar esta importación.';
+    }
+
+    if (status === 500) {
+        return 'No se pudo procesar la carga por un error interno del servidor. Revisa el registro de Laravel.';
+    }
+
+    return 'No se pudo subir ni validar el archivo XLSX.';
+}
+
 function selectFile(selected) {
     file.value = selected;
     preview.value = null;
@@ -92,11 +177,10 @@ function selectFile(selected) {
         return;
     }
 
-    const maxMb = Number(props.config.max_mb ?? 50);
-    const maximumSize = maxMb * 1024 * 1024;
+    const maximumSize = Number(props.config.max_bytes ?? 0);
 
-    if (selected.size > maximumSize) {
-        error.value = `El archivo supera el límite de ${maxMb} MB.`;
+    if (maximumSize > 0 && selected.size > maximumSize) {
+        error.value = `El archivo pesa ${formatMegabytes(selected.size)} MB y el servidor admite hasta ${formatMegabytes(maximumSize)} MB.`;
     }
 }
 
@@ -113,15 +197,7 @@ async function validateFile() {
     body.append('archivo', file.value);
 
     try {
-        const { data } = await axios.post(
-            props.previewUrl,
-            body,
-            {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            },
-        );
+        const { data } = await axios.post(props.previewUrl, body);
 
         preview.value = data;
 
@@ -129,13 +205,7 @@ async function validateFile() {
             error.value = `Faltan columnas obligatorias: ${data.columnas_faltantes.join(', ')}.`;
         }
     } catch (exception) {
-        const validationMessage =
-            exception.response?.data?.errors?.archivo?.[0];
-
-        error.value =
-            validationMessage
-            || exception.response?.data?.message
-            || 'No se pudo validar el archivo XLSX.';
+        error.value = extractUploadError(exception);
     } finally {
         validating.value = false;
     }

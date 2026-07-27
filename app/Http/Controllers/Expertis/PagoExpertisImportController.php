@@ -11,6 +11,7 @@ use App\Services\Expertis\ExpertisImportTemplateService;
 use App\Services\Expertis\ExpertisImportWorkflowService;
 use App\Services\Expertis\ExpertisSpreadsheetService;
 use App\Services\Expertis\RegistrarPagoManualExpertisService;
+use App\Support\UploadLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,17 +21,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PagoExpertisImportController extends Controller
 {
-    public function create(Request $request): Response
+    public function create(Request $request, UploadLimit $uploadLimit): Response
     {
         return Inertia::render('Expertis/Importaciones/Pagos', [
             'ultimaImportacion' => ImportacionExpertis::query()
                 ->where('tipo', ImportacionExpertis::TIPO_PAGOS)
                 ->latest()
                 ->first(),
-            'configuracion' => [
-                'max_mb' => config('expertis.import_max_mb', 50),
-                'extensiones' => ['xlsx'],
-            ],
+            'configuracion' => $uploadLimit->configuration(),
             'modo' => $request->query('modo') === 'manual' ? 'manual' : 'archivo',
             'manualDefaults' => [
                 'fecha' => now()->toDateString(),

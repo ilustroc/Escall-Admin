@@ -9,6 +9,7 @@ use App\Models\ImportacionExpertis;
 use App\Services\Expertis\ExpertisImportTemplateService;
 use App\Services\Expertis\ExpertisImportWorkflowService;
 use App\Services\Expertis\ExpertisSpreadsheetService;
+use App\Support\UploadLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -17,17 +18,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GestionExpertisImportController extends Controller
 {
-    public function create(): Response
+    public function create(UploadLimit $uploadLimit): Response
     {
         return Inertia::render('Expertis/Importaciones/Gestiones', [
             'ultimaImportacion' => ImportacionExpertis::query()
                 ->where('tipo', ImportacionExpertis::TIPO_GESTIONES)
                 ->latest()
                 ->first(),
-            'configuracion' => [
-                'max_mb' => config('expertis.import_max_mb', 50),
-                'extensiones' => ['xlsx'],
-            ],
+            'configuracion' => $uploadLimit->configuration(),
         ]);
     }
 
