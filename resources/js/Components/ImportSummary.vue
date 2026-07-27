@@ -15,6 +15,33 @@ const period = computed(() => (
     ?? null
 ));
 
+const progressTotal = computed(() => Number(
+    props.summary.progreso_total
+    ?? props.summary.progreso?.total
+    ?? 0,
+));
+
+const progressCurrent = computed(() => Number(
+    props.summary.progreso_actual
+    ?? props.summary.progreso?.actual
+    ?? 0,
+));
+
+const progressPercent = computed(() => {
+    if (props.summary.progreso?.porcentaje != null) {
+        return Math.min(100, Number(props.summary.progreso.porcentaje));
+    }
+
+    if (progressTotal.value <= 0) {
+        return 0;
+    }
+
+    return Math.min(
+        100,
+        (progressCurrent.value / progressTotal.value) * 100,
+    );
+});
+
 const stats = computed(() => [
     {
         label: 'Total',
@@ -108,10 +135,78 @@ function formatDate(value) {
         timeZone: 'America/Lima',
     }).format(date);
 }
+
+function formatDateTime(value) {
+    if (!value) {
+        return '—';
+    }
+
+    const date = new Date(value);
+
+    return Number.isNaN(date.getTime())
+        ? String(value)
+        : new Intl.DateTimeFormat('es-PE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZone: 'America/Lima',
+        }).format(date);
+}
+
+function elapsedTime(start, end) {
+    if (!start) {
+        return '—';
+    }
+
+    const startDate = new Date(start);
+    const endDate = end ? new Date(end) : new Date();
+    if (
+        Number.isNaN(startDate.getTime())
+        || Number.isNaN(endDate.getTime())
+    ) {
+        return '—';
+    }
+
+    const seconds = Math.max(
+        0,
+        Math.round((endDate - startDate) / 1000),
+    );
+
+    return seconds < 60
+        ? `${seconds}s`
+        : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+}
 </script>
 
 <template>
     <section class="min-w-0">
+        <div
+            v-if="summary.fase || progressTotal > 0"
+            class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+        >
+            <div class="flex items-center justify-between gap-3 text-xs">
+                <span class="font-semibold capitalize text-slate-700">
+                    {{ String(summary.fase ?? 'procesando').replaceAll('_', ' ') }}
+                </span>
+                <span class="font-bold text-[#073DC7]">
+                    {{ progressPercent.toFixed(1) }}%
+                </span>
+            </div>
+            <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                <div
+                    class="h-full rounded-full bg-[#073DC7] transition-all duration-300"
+                    :style="{ width: `${progressPercent}%` }"
+                />
+            </div>
+            <p class="mt-2 text-[11px] text-slate-500">
+                {{ formatNumber(progressCurrent) }} de
+                {{ formatNumber(progressTotal) }} filas
+            </p>
+        </div>
+
         <div
             v-if="period"
             class="mb-3 rounded-xl border border-blue-100 bg-[#EEF4FF] px-4 py-3"
@@ -172,5 +267,32 @@ function formatDate(value) {
                 </span>
             </div>
         </div>
+
+        <dl
+            v-if="summary.heartbeat_at || summary.iniciado_at"
+            class="mt-4 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs sm:grid-cols-2"
+        >
+            <div>
+                <dt class="font-semibold text-slate-500">
+                    Último heartbeat
+                </dt>
+                <dd class="mt-1 text-slate-700">
+                    {{ formatDateTime(summary.heartbeat_at) }}
+                </dd>
+            </div>
+            <div>
+                <dt class="font-semibold text-slate-500">
+                    Tiempo transcurrido
+                </dt>
+                <dd class="mt-1 text-slate-700">
+                    {{
+                        elapsedTime(
+                            summary.iniciado_at,
+                            summary.finalizado_at,
+                        )
+                    }}
+                </dd>
+            </div>
+        </dl>
     </section>
 </template>

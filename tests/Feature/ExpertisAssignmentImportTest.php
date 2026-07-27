@@ -5,8 +5,12 @@ namespace Tests\Feature;
 use App\Models\AsignacionExpertis;
 use App\Models\ImportacionExpertis;
 use App\Models\User;
+use App\Services\Expertis\AsignacionExpertisImportService;
+use App\Services\Expertis\AsignacionExpertisJobFailureService;
+use App\Services\Expertis\AsignacionExpertisPreparationService;
 use App\Services\Expertis\ExpertisSpreadsheetService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -28,6 +32,8 @@ class ExpertisAssignmentImportTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
+        Queue::fake();
+        config(['queue.default' => 'database']);
         $this->usuario = User::factory()->create();
     }
 
@@ -90,10 +96,10 @@ class ExpertisAssignmentImportTest extends TestCase
 
         $preview
             ->assertOk()
-            ->assertJsonPath('columnas_faltantes', [])
-            ->assertJsonPath('periodo_detectado', '202607')
-            ->assertJsonPath('empresa_detectada', 'EXPERTIS')
-            ->assertJsonPath('total_filas_detectadas', 25)
+            ->assertJsonPath('estado', 'listo_para_importar')
+            ->assertJsonPath('periodo', '202607')
+            ->assertJsonPath('empresa', 'EXPERTIS')
+            ->assertJsonPath('totales.filas', 25)
             ->assertJsonPath('preview.0.codigo', '00000001-LOS ANDES');
         $this->assertCount(20, $preview->json('preview'));
     }
@@ -109,8 +115,8 @@ class ExpertisAssignmentImportTest extends TestCase
             array_values($encabezados),
         ))
             ->assertOk()
-            ->assertJsonPath('token', null)
-            ->assertJsonPath('columnas_faltantes.0', 'CODIGO');
+            ->assertJsonPath('estado', 'fallido')
+            ->assertJsonPath('puede_confirmar', false);
     }
 
     public function test_varios_periodos_incluso_despues_de_la_fila_20_bloquean_preview(): void
@@ -122,11 +128,9 @@ class ExpertisAssignmentImportTest extends TestCase
         $filas[] = $this->fila(['periodo' => '202608', 'dni' => '00000025']);
 
         $this->preview($this->crearXlsx($filas))
-            ->assertUnprocessable()
-            ->assertJsonPath(
-                'message',
-                'El archivo debe contener un único periodo de asignación.',
-            );
+            ->assertOk()
+            ->assertJsonPath('estado', 'fallido')
+            ->assertJsonPath('puede_reintentar', true);
     }
 
     public function test_empresa_distinta_de_expertis_bloquea_preview(): void
@@ -134,11 +138,9 @@ class ExpertisAssignmentImportTest extends TestCase
         $this->preview($this->crearXlsx([
             $this->fila(['empresa' => 'OTRA EMPRESA']),
         ]))
-            ->assertUnprocessable()
-            ->assertJsonPath(
-                'message',
-                'El archivo de asignación contiene una empresa distinta de EXPERTIS.',
-            );
+            ->assertOk()
+            ->assertJsonPath('estado', 'fallido')
+            ->assertJsonPath('puede_reintentar', true);
     }
 
     public function test_insercion_inicial_guarda_los_26_campos_normalizados(): void
@@ -309,13 +311,13 @@ class ExpertisAssignmentImportTest extends TestCase
         $archivo = $this->crearXlsx([$this->fila()]);
         $primera = $this->importar($archivo);
         $preview = $this->preview($archivo);
-        $preview->assertJsonPath('archivo_duplicado.id', $primera->id);
+        $preview->assertJsonPath('id', $primera->id);
 
         $this->actingAs($this->usuario)
             ->post('/expertis/importaciones/asignaciones', [
-                'preview_token' => $preview->json('token'),
+                'importacion_id' => $preview->json('id'),
             ])
-            ->assertRedirect();
+            ->assertSessionHas('error');
 
         $this->assertDatabaseCount('importaciones_expertis', 1);
         $this->assertDatabaseCount('asignaciones_expertis', 1);
@@ -402,24 +404,71 @@ class ExpertisAssignmentImportTest extends TestCase
 
     private function importar(string $archivo): ImportacionExpertis
     {
-        $preview = $this->preview($archivo);
-        $preview->assertOk()->assertJsonPath('columnas_faltantes', []);
+        $status = $this->preview($archivo);
+        $status->assertOk();
+        $importacion = ImportacionExpertis::query()->findOrFail(
+            $status->json('id'),
+        );
 
-        $this->actingAs($this->usuario)
-            ->post('/expertis/importaciones/asignaciones', [
-                'preview_token' => $preview->json('token'),
-            ])
-            ->assertRedirect();
+        if ($importacion->estado === ImportacionExpertis::ESTADO_FALLIDO) {
+            $this->actingAs($this->usuario)
+                ->postJson(
+                    "/expertis/importaciones/{$importacion->id}/reintentar",
+                )
+                ->assertAccepted();
+            $importacion->refresh();
+        }
 
-        return ImportacionExpertis::latest('id')->firstOrFail();
+        if ($importacion->estado === ImportacionExpertis::ESTADO_VALIDANDO) {
+            app(AsignacionExpertisPreparationService::class)
+                ->preparar($importacion);
+            $importacion->refresh();
+        }
+
+        if (
+            $importacion->estado
+            === ImportacionExpertis::ESTADO_LISTO_PARA_IMPORTAR
+        ) {
+            $this->actingAs($this->usuario)
+                ->post('/expertis/importaciones/asignaciones', [
+                    'importacion_id' => $importacion->id,
+                ])
+                ->assertRedirect();
+            $importacion->refresh();
+        }
+
+        if ($importacion->estado === ImportacionExpertis::ESTADO_EN_COLA) {
+            app(AsignacionExpertisImportService::class)
+                ->importarPreparada($importacion);
+        }
+
+        return $importacion->refresh();
     }
 
     private function preview(string $archivo)
     {
-        return $this->actingAs($this->usuario)
+        $upload = $this->actingAs($this->usuario)
             ->postJson('/expertis/importaciones/asignaciones/preview', [
                 'archivo' => $this->uploadedCopy($archivo),
             ]);
+        $upload->assertAccepted();
+
+        $importacion = ImportacionExpertis::query()->findOrFail(
+            $upload->json('importacion_id'),
+        );
+        if ($importacion->estado === ImportacionExpertis::ESTADO_VALIDANDO) {
+            try {
+                app(AsignacionExpertisPreparationService::class)
+                    ->preparar($importacion);
+            } catch (\Throwable $exception) {
+                app(AsignacionExpertisJobFailureService::class)
+                    ->markFailed($importacion->id, $exception);
+            }
+        }
+
+        return $this->actingAs($this->usuario)->getJson(
+            "/expertis/importaciones/{$importacion->id}/estado",
+        );
     }
 
     private function fila(array $cambios = []): array

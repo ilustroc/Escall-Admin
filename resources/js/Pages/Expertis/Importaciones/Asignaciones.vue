@@ -12,12 +12,12 @@ defineProps({
 <template>
     <AppLayout
         title="Cargar asignaciones Expertis"
-        subtitle="Importa la asignación mensual y conserva cada periodo por separado."
+        subtitle="Carga el XLSX y deja que la validación continúe en segundo plano."
         :breadcrumbs="['Operativo', 'Cargas', 'Expertis · Asignaciones']"
     >
         <PageHeader
             title="Asignaciones Expertis"
-            description="El periodo identifica el mes de asignación. El código se genera con DNI y tipo de cartera únicamente para Expertis."
+            description="El XLSX se lee una sola vez. Después de validar periodo, empresa y filas, podrás confirmar la importación desde el detalle."
         />
 
         <ExpertisImportForm

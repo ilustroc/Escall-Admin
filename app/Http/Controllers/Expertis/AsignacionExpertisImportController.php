@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Expertis;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Expertis\ConfirmarImportacionExpertisRequest;
+use App\Http\Requests\Expertis\ConfirmarAsignacionExpertisRequest;
 use App\Http\Requests\Expertis\ImportarAsignacionesExpertisRequest;
 use App\Models\ImportacionExpertis;
 use App\Services\Expertis\ExpertisImportTemplateService;
 use App\Services\Expertis\ExpertisImportWorkflowService;
-use App\Services\Expertis\ExpertisSpreadsheetService;
 use App\Support\UploadLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -40,44 +39,47 @@ class AsignacionExpertisImportController extends Controller
         ExpertisImportWorkflowService $workflow,
     ): JsonResponse {
         try {
-            return response()->json($workflow->preview(
-                $request->file('archivo'),
-                ExpertisSpreadsheetService::ASIGNACIONES,
-                $request->user()->id,
-                $request->session(),
-            ));
+            return response()->json(
+                $workflow->queueAssignmentPreparation(
+                    $request->file('archivo'),
+                    $request->user()->id,
+                ),
+                202,
+            );
         } catch (\RuntimeException $exception) {
-            return response()->json(['message' => $exception->getMessage()], 422);
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
         }
     }
 
     public function store(
-        ConfirmarImportacionExpertisRequest $request,
+        ConfirmarAsignacionExpertisRequest $request,
         ExpertisImportWorkflowService $workflow,
     ): RedirectResponse {
+        $importacion = ImportacionExpertis::query()->findOrFail(
+            $request->integer('importacion_id'),
+        );
+
         try {
-            $result = $workflow->import(
-                $request->validated('preview_token'),
-                ExpertisSpreadsheetService::ASIGNACIONES,
+            $workflow->queueAssignmentImport(
+                $importacion,
                 $request->user()->id,
-                $request->session(),
             );
         } catch (\RuntimeException $exception) {
             return back()->with('error', $exception->getMessage());
         } catch (\Throwable) {
             return back()->with(
                 'error',
-                'No se pudo completar la importación de asignaciones. Revisa el historial de errores.',
+                'No se pudo encolar la importación de asignaciones.',
             );
         }
 
         return redirect()
-            ->route('expertis.importaciones.show', $result['importacion'])
+            ->route('expertis.importaciones.show', $importacion)
             ->with(
-                $result['duplicado'] ? 'warning' : 'success',
-                $result['duplicado']
-                    ? 'Este mismo archivo de asignaciones ya había sido procesado.'
-                    : 'La importación de asignaciones Expertis finalizó.',
+                'success',
+                'La importación de asignaciones quedó en cola.',
             );
     }
 }

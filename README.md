@@ -72,22 +72,47 @@ una base preexistente sin revisar [la guía de despliegue](docs/DEPLOY_EXPERTIS.
 Variables Expertis:
 
 ```dotenv
+QUEUE_CONNECTION=database
 EXPERTIS_IMPORT_MAX_MB=50
 EXPERTIS_IMPORT_CHUNK_SIZE=1000
 EXPERTIS_GUARDAR_ARCHIVO_ORIGINAL=true
+EXPERTIS_QUEUE=expertis
+EXPERTIS_JOB_TIMEOUT=1800
+EXPERTIS_QUEUE_RETRY_AFTER=2100
+EXPERTIS_STALE_MINUTES=15
 ```
 
-La vista previa de asignaciones recorre el XLSX completo por streaming, conserva solo 20
-filas para pantalla y valida un único periodo `YYYYMM`. La carga usa lotes de 1000 por
-defecto y upsert por `periodo + empresa + codigo_normalizado`.
+Las asignaciones se procesan en dos Jobs. El primero lee el XLSX una sola vez, conserva
+20 filas para pantalla y escribe bloques JSONL privados de 1000 filas. Después de la
+confirmación, el segundo Job hace upsert desde esos bloques sin volver a abrir el XLSX.
+Gestiones y pagos conservan su flujo actual.
+
+Para desarrollo deben permanecer abiertas tres terminales:
+
+```bash
+# Terminal 1
+php artisan serve
+
+# Terminal 2
+npm run dev
+
+# Terminal 3
+php artisan queue:work database --queue=expertis --sleep=1 --timeout=1800 --tries=1
+```
+
+`EXPERTIS_QUEUE_RETRY_AFTER` debe ser mayor que `EXPERTIS_JOB_TIMEOUT`. Si la conexión es
+`sync`, la aplicación rechaza la carga de asignaciones para evitar ejecutarla dentro de la
+petición web.
 
 ## Verificación
 
 ```bash
 composer validate --strict
 php artisan test
+php artisan test --group=large-import
 php artisan route:list
-php artisan migrate --pretend --path=database/migrations/2026_07_26_000001_create_asignaciones_expertis_table.php
+php artisan migrate --pretend --path=database/migrations/2026_07_27_000001_add_queue_tracking_to_importaciones_expertis_table.php
+php artisan migrate --pretend --path=database/migrations/2026_07_27_000002_create_queue_tables.php
 npm run build
 npm audit --omit=dev
 ```

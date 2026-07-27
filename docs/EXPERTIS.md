@@ -14,7 +14,11 @@ Expertis mantiene sus datos aislados del flujo operativo actual, pero comparte l
   - importadores de gestiones y pagos: lotes, transacciones y auditoría;
   - `ExpertisImportTemplateService`: plantillas XLSX oficiales para ambas importaciones;
   - registro manual de pagos: la misma normalización, hash y trazabilidad que el XLSX;
-  - `ExpertisImportWorkflowService`: preview, token temporal y ejecución de importaciones;
+  - `ExpertisImportWorkflowService`: preview tradicional de gestiones/pagos y despacho
+    asíncrono de asignaciones;
+  - `AsignacionExpertisPreparationService`: lectura única del XLSX y bloques JSONL;
+  - `AsignacionExpertisImportService`: upsert desde bloques preparados;
+- `app/Jobs/Expertis`: preparación e importación en la cola `expertis`;
 - `app/Queries/Expertis`:
   - `ExpertisReportQuery`: filtros, `UNICO`, pagos válidos y agregaciones;
   - `ExpertisDashboardQuery` e `ExpertisImportHistoryQuery`: indicadores e historial.
@@ -25,7 +29,9 @@ Expertis mantiene sus datos aislados del flujo operativo actual, pero comparte l
 
 ### `importaciones_expertis`
 
-Audita usuario, tipo, archivo, SHA-256, estado, contadores, rango de fechas, resumen y error general. La restricción única `tipo + hash_archivo` impide procesar dos veces el mismo archivo.
+Audita usuario, tipo, archivo, SHA-256, estado, contadores, rango de fechas, resumen y
+error general. También conserva `heartbeat_at`, `queued_at`, fase, intentos y progreso. La
+restricción única `tipo + hash_archivo` impide procesar dos veces el mismo archivo.
 
 ### `errores_importacion_expertis`
 
@@ -162,10 +168,14 @@ El código se calcula exclusivamente en `AsignacionExpertisDataMapper` como
 `DNI normalizado + "-" + TIPO DE CARTERA normalizado`. Esta regla no se aplica a otros
 módulos. Si el XLSX incluye un código diferente, la fila queda registrada como error.
 
-La vista previa recorre toda la primera hoja con OpenSpout para confirmar un único periodo
-`YYYYMM`, empresa `EXPERTIS` y total de filas, pero conserva solo las primeras 20. La carga
-usa `EXPERTIS_IMPORT_CHUNK_SIZE` (1000 por defecto), transacciones cortas y un upsert masivo
-por lote:
+La preparación se ejecuta fuera de HTTP mediante Laravel Queue. Abre la primera hoja con
+OpenSpout una sola vez, confirma un único periodo `YYYYMM` y empresa `EXPERTIS`, conserva
+solo las primeras 20 filas válidas y escribe JSON Lines privados en
+`storage/app/private/expertis/prepared/{id}`. Cada bloque usa
+`EXPERTIS_IMPORT_CHUNK_SIZE` (1000 por defecto).
+
+Después de la confirmación, un segundo Job lee únicamente esos bloques y usa transacciones
+cortas y upsert masivo:
 
 - clave nueva: insertada;
 - misma clave y mismo hash: duplicada;
@@ -176,6 +186,22 @@ No se elimina el periodo ni se borran clientes ausentes en una reimportación. E
 `/expertis/asignaciones` selecciona el último periodo disponible y pagina 50 filas. La
 exportación usa un cursor y OpenSpout, por lo que no carga aproximadamente 40 000 registros
 en memoria. La plantilla se genera bajo demanda con tres registros ficticios.
+
+Los estados de asignaciones son `validando`, `listo_para_importar`, `en_cola`,
+`procesando`, `completado`, `completado_con_errores`, `fallido` y `duplicado`. La interfaz
+consulta el estado cada tres segundos y muestra progreso y heartbeat. Un fallo conserva el
+XLSX y los bloques completos para poder reintentar.
+
+Operación segura:
+
+```bash
+php artisan expertis:imports:recover-stale --minutes=15 --dry-run
+php artisan expertis:imports:recover-stale --minutes=15
+php artisan expertis:prepared:cleanup --days=7 --dry-run
+```
+
+La recuperación marca como fallida una ejecución sin actividad; no borra filas ya
+insertadas. El reintento prefiere bloques completos y solo vuelve al XLSX si faltan.
 
 La futura relación con pagos queda preparada así:
 

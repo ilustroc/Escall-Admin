@@ -80,7 +80,7 @@ Los pagos deben ser mayores que cero. Una gestión sin monto se almacena con cer
 
 ## Validación previa
 
-La pantalla:
+Gestiones y pagos:
 
 1. valida tamaño, extensión y contenido;
 2. detecta encabezados;
@@ -89,6 +89,11 @@ La pantalla:
 5. solicita confirmación.
 
 Un archivo con columnas obligatorias faltantes no obtiene token de importación y no escribe registros.
+
+Asignaciones usa un flujo asíncrono: **Subir y validar** guarda el XLSX privado y abre el
+detalle. Allí se muestra el progreso de la validación y, cuando queda
+`listo_para_importar`, aparecen las primeras 20 filas válidas y el botón
+**Confirmar importación**. El navegador puede cerrarse durante ambas fases.
 
 ## Errores frecuentes
 
@@ -148,10 +153,15 @@ En campos opcionales, `-`, vacío y `NULL` se guardan como null. La regla
 `CODIGO = DNI-TIPO DE CARTERA` pertenece solo a Expertis; un código enviado que no coincida
 se registra como error.
 
-La vista previa examina la hoja completa por streaming, devuelve periodo, empresa y total,
-y muestra como máximo 20 filas. La importación procesa lotes de 1000. Al reimportar un
-periodo, los registros idénticos se cuentan como duplicados y los modificados se
-actualizan; no se borra el periodo completo.
+Un Job examina la hoja completa por streaming una sola vez, devuelve periodo, empresa y
+total, y muestra como máximo 20 filas válidas. Las filas normalizadas se guardan en bloques
+JSONL privados de 1000; el Job de importación consume esos bloques sin volver a abrir el
+XLSX. Al reimportar un periodo, los registros idénticos se cuentan como duplicados y los
+modificados se actualizan; no se borra el periodo completo.
+
+`AÑO_LABORAL` y `AÑO_CASTIGO` aceptan vacío, `-`, `NULL` o un año entre 1900 y 2100. Un
+valor como `1`, `5`, `NO` o `SIN DATO` se registra como error de esa fila; no se transforma
+automáticamente y no detiene las demás filas válidas.
 
 La plantilla oficial se descarga desde **Cargas → Expertis Asignaciones** e incluye tres
 registros ficticios con DNI `00000001`, `00000002` y `00000003`.

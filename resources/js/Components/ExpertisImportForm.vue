@@ -63,6 +63,7 @@ const typeNames = {
 };
 
 const title = computed(() => typeNames[props.type] ?? props.type);
+const isAssignments = computed(() => props.type === 'asignaciones');
 
 const previewColumns = computed(() => (
     preview.value?.columnas_detectadas ?? []
@@ -199,6 +200,12 @@ async function validateFile() {
     try {
         const { data } = await axios.post(props.previewUrl, body);
 
+        if (isAssignments.value && data.seguimiento_url) {
+            router.visit(data.seguimiento_url);
+
+            return;
+        }
+
         preview.value = data;
 
         if (data.columnas_faltantes?.length) {
@@ -245,6 +252,8 @@ function statusTone(status) {
         fallido: 'danger',
         procesando: 'info',
         validando: 'info',
+        listo_para_importar: 'success',
+        en_cola: 'info',
         pendiente: 'info',
     };
 
@@ -349,14 +358,27 @@ function formatDateTime(value) {
                         :disabled="!file || Boolean(error)"
                         @click="validateFile"
                     >
-                        Validar y previsualizar
+                        {{
+                            isAssignments
+                                ? 'Subir y validar'
+                                : 'Validar y previsualizar'
+                        }}
                     </AppButton>
                 </div>
+
+                <p
+                    v-if="isAssignments"
+                    class="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-800"
+                >
+                    La validación continuará en segundo plano. Podrás seguir
+                    el avance, confirmar la importación o reintentar desde el
+                    detalle.
+                </p>
             </div>
 
             <!-- Vista previa -->
             <div
-                v-if="preview"
+                v-if="preview && !isAssignments"
                 class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card md:p-6"
             >
                 <div

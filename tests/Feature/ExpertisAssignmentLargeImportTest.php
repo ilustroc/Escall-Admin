@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\ImportacionExpertis;
 use App\Models\User;
+use App\Services\Expertis\AsignacionExpertisImportService;
+use App\Services\Expertis\AsignacionExpertisPreparationService;
 use App\Services\Expertis\ExpertisSpreadsheetService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use OpenSpout\Common\Entity\Row;
@@ -70,6 +73,8 @@ class ExpertisAssignmentLargeImportTest extends TestCase
         @set_time_limit(0);
         @ini_set('memory_limit', '512M');
         Storage::fake('local');
+        Queue::fake();
+        config(['queue.default' => 'database']);
         config(['expertis.chunk_size' => 500]);
         $usuario = User::factory()->create();
         $archivo = $this->crearXlsxGrande(40000);
@@ -80,20 +85,29 @@ class ExpertisAssignmentLargeImportTest extends TestCase
                 'archivo' => $this->uploadedCopy($archivo),
             ]);
         $preview
-            ->assertOk()
-            ->assertJsonPath('total_filas_detectadas', 40000)
-            ->assertJsonPath('periodo_detectado', '202607');
-        $this->assertCount(20, $preview->json('preview'));
+            ->assertAccepted()
+            ->assertJsonPath('estado', 'validando');
+        $importacion = ImportacionExpertis::query()->findOrFail(
+            $preview->json('importacion_id'),
+        );
+        app(AsignacionExpertisPreparationService::class)
+            ->preparar($importacion);
+        $importacion->refresh();
+        $this->assertSame(40000, $importacion->total_filas);
+        $this->assertSame('202607', $importacion->resumen['periodo']);
+        $this->assertCount(20, $importacion->resumen['preview']);
 
         $this->actingAs($usuario)
             ->post('/expertis/importaciones/asignaciones', [
-                'preview_token' => $preview->json('token'),
+                'importacion_id' => $importacion->id,
             ])
             ->assertRedirect();
+        app(AsignacionExpertisImportService::class)
+            ->importarPreparada($importacion);
 
         $segundos = microtime(true) - $inicio;
         $memoria = memory_get_peak_usage(true);
-        $importacion = ImportacionExpertis::firstOrFail();
+        $importacion->refresh();
 
         $this->assertSame(40000, $importacion->total_filas);
         $this->assertSame(40000, $importacion->filas_insertadas);
@@ -107,14 +121,10 @@ class ExpertisAssignmentLargeImportTest extends TestCase
                 'archivo' => $this->uploadedCopy($archivo),
             ]);
         $segunda
-            ->assertOk()
-            ->assertJsonPath('archivo_duplicado.id', $importacion->id);
-
-        $this->actingAs($usuario)
-            ->post('/expertis/importaciones/asignaciones', [
-                'preview_token' => $segunda->json('token'),
-            ])
-            ->assertRedirect();
+            ->assertAccepted()
+            ->assertJsonPath('importacion_id', $importacion->id)
+            ->assertJsonPath('duplicado', true)
+            ->assertJsonPath('reutilizada', true);
 
         $this->assertDatabaseCount('importaciones_expertis', 1);
         $this->assertDatabaseCount('asignaciones_expertis', 40000);

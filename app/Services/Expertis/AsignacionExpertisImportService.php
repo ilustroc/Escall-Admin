@@ -4,11 +4,12 @@ namespace App\Services\Expertis;
 
 use App\Models\AsignacionExpertis;
 use App\Models\ImportacionExpertis;
+use Generator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
-class AsignacionExpertisImportService extends AbstractExpertisImportService
+class AsignacionExpertisImportService
 {
     private const CAMPOS_ACTUALIZABLES = [
         'importacion_expertis_id',
@@ -42,243 +43,302 @@ class AsignacionExpertisImportService extends AbstractExpertisImportService
     ];
 
     public function __construct(
-        ExpertisSpreadsheetService $spreadsheet,
-        NormalizadorExpertisService $normalizador,
-        private readonly AsignacionExpertisDataMapper $mapper,
-    ) {
-        parent::__construct($spreadsheet, $normalizador);
-    }
+        private readonly AsignacionExpertisPreparationService $preparation,
+    ) {}
 
-    public function importar(
-        string $rutaTemporal,
-        string $nombreOriginal,
-        ?int $userId,
-    ): array {
-        $this->prepararEjecucionLarga();
+    public function importarPreparada(ImportacionExpertis $importacion): void
+    {
+        $inicio = microtime(true);
+        $importacion->refresh();
 
-        $inspeccion = $this->spreadsheet->inspeccionar(
-            Storage::disk('local')->path($rutaTemporal),
-            ExpertisSpreadsheetService::ASIGNACIONES,
-        );
-
-        if ($inspeccion['columnas_faltantes'] !== []) {
+        if (! $this->preparation->hasCompletePreparation($importacion)) {
             throw new RuntimeException(
-                'Faltan columnas obligatorias: '.implode(', ', $inspeccion['columnas_faltantes']),
+                'Los bloques preparados no están completos. Repite la preparación del XLSX.',
             );
         }
 
-        $contexto = $this->iniciar(
-            $rutaTemporal,
-            $nombreOriginal,
-            $userId,
-            ImportacionExpertis::TIPO_ASIGNACIONES,
+        $chunks = $this->preparation->chunks($importacion);
+        $summary = $importacion->resumen ?? [];
+        $validas = (int) ($summary['filas_validas'] ?? 0);
+        $erroresPreparacion = (int) ($summary['filas_error'] ?? $importacion->filas_error);
+        $resumeChunk = min(
+            count($chunks),
+            max(0, (int) ($summary['ultimo_chunk_procesado'] ?? 0)),
+        );
+        $estadisticas = [
+            'total' => (int) ($summary['total_archivo'] ?? $importacion->total_filas),
+            'procesadas' => $resumeChunk > 0
+                ? (int) $importacion->progreso_actual
+                : 0,
+            'insertadas' => $resumeChunk > 0
+                ? (int) $importacion->filas_insertadas
+                : 0,
+            'actualizadas' => $resumeChunk > 0
+                ? (int) $importacion->filas_actualizadas
+                : 0,
+            'duplicadas' => $resumeChunk > 0
+                ? (int) $importacion->filas_duplicadas
+                : 0,
+            'errores' => $resumeChunk > 0
+                ? (int) $importacion->filas_error
+                : $erroresPreparacion,
+            'lotes' => $resumeChunk,
+        ];
+
+        DB::connection()->disableQueryLog();
+        $importacion->update([
+            'estado' => ImportacionExpertis::ESTADO_PROCESANDO,
+            'fase' => ImportacionExpertis::FASE_IMPORTANDO,
+            'heartbeat_at' => now(),
+            'progreso_actual' => $estadisticas['procesadas'],
+            'progreso_total' => $validas,
+            'filas_insertadas' => $estadisticas['insertadas'],
+            'filas_actualizadas' => $estadisticas['actualizadas'],
+            'filas_duplicadas' => $estadisticas['duplicadas'],
+            'filas_error' => $estadisticas['errores'],
+            'finalizado_at' => null,
+            'mensaje_error' => null,
+        ]);
+
+        foreach ($chunks as $chunkNumber => $chunkPath) {
+            if ($chunkNumber < $resumeChunk) {
+                continue;
+            }
+
+            $rows = iterator_to_array($this->readChunk($chunkPath), false);
+            $delta = $this->processChunk($importacion, $rows);
+
+            $estadisticas['procesadas'] += count($rows);
+            $estadisticas['insertadas'] += $delta['insertadas'];
+            $estadisticas['actualizadas'] += $delta['actualizadas'];
+            $estadisticas['duplicadas'] += $delta['duplicadas'];
+            $estadisticas['errores'] += $delta['errores'];
+            $estadisticas['lotes']++;
+
+            $summary = array_merge($summary, [
+                'ultimo_chunk_procesado' => $chunkNumber + 1,
+                'total_chunks' => count($chunks),
+            ]);
+
+            ImportacionExpertis::query()
+                ->whereKey($importacion->id)
+                ->update([
+                    'heartbeat_at' => now(),
+                    'progreso_actual' => $estadisticas['procesadas'],
+                    'progreso_total' => $validas,
+                    'total_filas' => $estadisticas['total'],
+                    'filas_insertadas' => $estadisticas['insertadas'],
+                    'filas_actualizadas' => $estadisticas['actualizadas'],
+                    'filas_duplicadas' => $estadisticas['duplicadas'],
+                    'filas_error' => $estadisticas['errores'],
+                    'resumen' => json_encode($summary),
+                    'updated_at' => now(),
+                ]);
+        }
+
+        $segundos = round(microtime(true) - $inicio, 3);
+        $memoriaMb = round(memory_get_peak_usage(true) / 1048576, 2);
+        $summary = array_merge($summary, [
+            'importacion_segundos' => $segundos,
+            'memoria_maxima_mb' => max(
+                (float) ($summary['memoria_maxima_mb'] ?? 0),
+                $memoriaMb,
+            ),
+            'total_chunks' => count($chunks),
+            'lotes' => $estadisticas['lotes'],
+            'insertadas' => $estadisticas['insertadas'],
+            'actualizadas' => $estadisticas['actualizadas'],
+            'duplicadas' => $estadisticas['duplicadas'],
+            'errores' => $estadisticas['errores'],
+        ]);
+
+        $importacion->update([
+            'estado' => $estadisticas['errores'] > 0
+                ? ImportacionExpertis::ESTADO_COMPLETADO_CON_ERRORES
+                : ImportacionExpertis::ESTADO_COMPLETADO,
+            'fase' => ImportacionExpertis::FASE_IMPORTANDO,
+            'heartbeat_at' => now(),
+            'progreso_actual' => $validas,
+            'progreso_total' => $validas,
+            'total_filas' => $estadisticas['total'],
+            'filas_insertadas' => $estadisticas['insertadas'],
+            'filas_actualizadas' => $estadisticas['actualizadas'],
+            'filas_duplicadas' => $estadisticas['duplicadas'],
+            'filas_error' => $estadisticas['errores'],
+            'finalizado_at' => now(),
+            'resumen' => $summary,
+            'mensaje_error' => null,
+        ]);
+
+        Storage::disk('local')->deleteDirectory(
+            $this->preparation->preparedDirectory($importacion),
         );
 
-        if ($contexto['duplicado']) {
-            return $contexto;
-        }
-
-        /** @var ImportacionExpertis $importacion */
-        $importacion = $contexto['importacion'];
-        $estadisticas = [
-            'total' => 0,
-            'insertadas' => 0,
-            'actualizadas' => 0,
-            'duplicadas' => 0,
-            'errores' => 0,
-            'lotes' => 0,
-        ];
-        $lote = [];
-        $errores = [];
-        $clavesVistas = [];
-        $tamanoLote = max(1, (int) config('expertis.chunk_size', 1000));
-        $periodo = $inspeccion['periodo_detectado'] ?? null;
-        $empresa = $inspeccion['empresa_detectada'] ?? null;
-
-        $clavesRecuperadas = [];
-        foreach (DB::table('asignaciones_expertis')
-            ->where('importacion_expertis_id', $importacion->id)
-            ->select(['periodo', 'empresa', 'codigo_normalizado', 'hash_fila'])
-            ->cursor() as $asignacion) {
-            $clavesRecuperadas[$this->clave((array) $asignacion)] = $asignacion->hash_fila;
-        }
-
-        $importacion->errores()->delete();
-        DB::connection()->disableQueryLog();
-
-        try {
-            foreach ($this->spreadsheet->filas(
-                $contexto['ruta_proceso'],
-                ExpertisSpreadsheetService::ASIGNACIONES,
-            ) as $fila) {
-                $estadisticas['total']++;
-
-                try {
-                    $asignacion = $this->mapper->map(
-                        $fila['datos'],
-                        $importacion->id,
-                        $fila['numero_fila'],
-                    );
-                    $clave = $this->clave($asignacion);
-
-                    if (isset($clavesVistas[$clave])) {
-                        if (hash_equals($clavesVistas[$clave], $asignacion['hash_fila'])) {
-                            $estadisticas['duplicadas']++;
-                        } else {
-                            $estadisticas['errores']++;
-                            $errores[] = $this->error(
-                                $importacion->id,
-                                $fila,
-                                'CODIGO',
-                                'La clave PERIODO + EMPRESA + CODIGO está repetida con información diferente dentro del archivo.',
-                            );
-                        }
-                    } else {
-                        $clavesVistas[$clave] = $asignacion['hash_fila'];
-                        $lote[] = $asignacion;
-                    }
-                } catch (\InvalidArgumentException $exception) {
-                    $estadisticas['errores']++;
-                    $errores[] = $this->error(
-                        $importacion->id,
-                        $fila,
-                        null,
-                        $exception->getMessage(),
-                    );
-                }
-
-                if ($estadisticas['total'] % $tamanoLote === 0) {
-                    $this->procesarLote(
-                        $lote,
-                        $errores,
-                        (string) $periodo,
-                        (string) $empresa,
-                        $estadisticas,
-                        $clavesRecuperadas,
-                    );
-                    $lote = [];
-                    $errores = [];
-                    $this->actualizarProgreso($importacion, $estadisticas);
-                }
-            }
-
-            if ($lote !== [] || $errores !== []) {
-                $this->procesarLote(
-                    $lote,
-                    $errores,
-                    (string) $periodo,
-                    (string) $empresa,
-                    $estadisticas,
-                    $clavesRecuperadas,
-                );
-            }
-
-            $this->actualizarProgreso($importacion, $estadisticas);
-            $this->completar($importacion, $estadisticas, [
-                'periodo' => $periodo,
-                'empresa' => $empresa,
-                'total_archivo' => $inspeccion['total_filas_detectadas'] ?? $estadisticas['total'],
+        if (! (bool) config('expertis.guardar_archivo_original', true)) {
+            Storage::disk('local')->delete($importacion->ruta_archivo);
+            $importacion->update([
+                'nombre_guardado' => '',
+                'ruta_archivo' => '',
             ]);
-        } catch (\Throwable $exception) {
-            $this->marcarFallo($importacion, $exception, $estadisticas);
-            throw $exception;
-        } finally {
-            $this->limpiarTemporal($contexto['ruta_temporal']);
         }
-
-        return [
-            'duplicado' => false,
-            'importacion' => $importacion->fresh(),
-        ];
     }
 
-    private function procesarLote(
-        array $lote,
-        array $errores,
-        string $periodo,
-        string $empresa,
-        array &$estadisticas,
-        array &$clavesRecuperadas,
-    ): void {
-        $estadisticas['lotes']++;
-
-        DB::transaction(function () use (
-            $lote,
-            $errores,
-            $periodo,
-            $empresa,
-            &$estadisticas,
-            &$clavesRecuperadas,
-        ): void {
-            $existentes = collect();
-            if ($lote !== []) {
-                $existentes = AsignacionExpertis::query()
-                    ->where('periodo', $periodo)
-                    ->where('empresa', $empresa)
-                    ->whereIn(
+    private function processChunk(
+        ImportacionExpertis $importacion,
+        array $rows,
+    ): array {
+        return DB::transaction(function () use ($importacion, $rows): array {
+            $codes = array_values(array_unique(array_column(
+                $rows,
+                'codigo_normalizado',
+            )));
+            $period = (string) ($rows[0]['periodo'] ?? '');
+            $company = (string) ($rows[0]['empresa'] ?? '');
+            $existing = $codes === []
+                ? collect()
+                : AsignacionExpertis::query()
+                    ->where('periodo', $period)
+                    ->where('empresa', $company)
+                    ->whereIn('codigo_normalizado', $codes)
+                    ->get([
                         'codigo_normalizado',
-                        array_values(array_unique(array_column($lote, 'codigo_normalizado'))),
-                    )
-                    ->get(['id', 'codigo_normalizado', 'hash_fila'])
+                        'hash_fila',
+                        'importacion_expertis_id',
+                        'numero_fila_origen',
+                    ])
                     ->keyBy('codigo_normalizado');
-            }
 
-            $escrituras = [];
-            foreach ($lote as $asignacion) {
-                $clave = $this->clave($asignacion);
-                $existente = $existentes->get($asignacion['codigo_normalizado']);
-                $recuperada = array_key_exists($clave, $clavesRecuperadas);
+            $writes = [];
+            $errors = [];
+            $seen = [];
+            $stats = [
+                'insertadas' => 0,
+                'actualizadas' => 0,
+                'duplicadas' => 0,
+                'errores' => 0,
+            ];
 
-                if ($existente && hash_equals($existente->hash_fila, $asignacion['hash_fila'])) {
-                    $estadisticas[$recuperada ? 'insertadas' : 'duplicadas']++;
-                    unset($clavesRecuperadas[$clave]);
+            foreach ($rows as $row) {
+                $code = $row['codigo_normalizado'];
+                $hash = $row['hash_fila'];
+
+                if (isset($seen[$code])) {
+                    if (hash_equals($seen[$code], $hash)) {
+                        $stats['duplicadas']++;
+                    } else {
+                        $stats['errores']++;
+                        $errors[] = $this->duplicateConflictError(
+                            $importacion,
+                            $row,
+                        );
+                    }
+
+                    continue;
+                }
+                $seen[$code] = $hash;
+
+                $current = $existing->get($code);
+                if (! $current) {
+                    $writes[] = $row;
+                    $stats['insertadas']++;
 
                     continue;
                 }
 
-                $escrituras[] = $asignacion;
-                $estadisticas[$existente && ! $recuperada ? 'actualizadas' : 'insertadas']++;
-                unset($clavesRecuperadas[$clave]);
+                if ((int) $current->importacion_expertis_id === $importacion->id) {
+                    if (hash_equals($current->hash_fila, $hash)) {
+                        if (
+                            (int) $current->numero_fila_origen
+                            === (int) $row['numero_fila_origen']
+                        ) {
+                            $stats['insertadas']++;
+                        } else {
+                            $stats['duplicadas']++;
+                        }
+
+                        continue;
+                    }
+
+                    if (
+                        (int) $current->numero_fila_origen
+                        < (int) $row['numero_fila_origen']
+                    ) {
+                        $stats['errores']++;
+                        $errors[] = $this->duplicateConflictError(
+                            $importacion,
+                            $row,
+                        );
+
+                        continue;
+                    }
+                }
+
+                if (hash_equals($current->hash_fila, $hash)) {
+                    $stats['duplicadas']++;
+
+                    continue;
+                }
+
+                $writes[] = $row;
+                $stats['actualizadas']++;
             }
 
-            if ($escrituras !== []) {
+            if ($writes !== []) {
                 DB::table('asignaciones_expertis')->upsert(
-                    $escrituras,
+                    $writes,
                     ['periodo', 'empresa', 'codigo_normalizado'],
                     self::CAMPOS_ACTUALIZABLES,
                 );
             }
 
-            if ($errores !== []) {
-                DB::table('errores_importacion_expertis')->insert($errores);
+            if ($errors !== []) {
+                DB::table('errores_importacion_expertis')->insert($errors);
             }
+
+            return $stats;
         }, 3);
     }
 
-    private function clave(array $asignacion): string
+    private function readChunk(string $path): Generator
     {
-        return implode('|', [
-            $asignacion['periodo'] ?? '',
-            $asignacion['empresa'] ?? '',
-            $asignacion['codigo_normalizado'] ?? '',
-        ]);
+        $stream = Storage::disk('local')->readStream($path);
+        if (! is_resource($stream)) {
+            throw new RuntimeException(
+                'No se pudo leer un bloque preparado de asignaciones.',
+            );
+        }
+
+        try {
+            while (($line = fgets($stream)) !== false) {
+                $line = trim($line);
+                if ($line === '') {
+                    continue;
+                }
+
+                $row = json_decode($line, true, flags: JSON_THROW_ON_ERROR);
+                if (! is_array($row)) {
+                    throw new RuntimeException(
+                        'Un bloque preparado contiene una fila inválida.',
+                    );
+                }
+
+                yield $row;
+            }
+        } finally {
+            fclose($stream);
+        }
     }
 
-    private function error(
-        int $importacionId,
-        array $fila,
-        ?string $campo,
-        string $mensaje,
+    private function duplicateConflictError(
+        ImportacionExpertis $importacion,
+        array $row,
     ): array {
         return [
-            'importacion_expertis_id' => $importacionId,
-            'numero_fila' => $fila['numero_fila'],
-            'campo' => $campo,
-            'mensaje' => $mensaje,
-            'datos_originales' => json_encode(
-                $fila['originales'],
-                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE,
-            ),
+            'importacion_expertis_id' => $importacion->id,
+            'numero_fila' => $row['numero_fila_origen'],
+            'campo' => 'CODIGO',
+            'mensaje' => 'La clave PERIODO + EMPRESA + CODIGO está repetida con información diferente dentro del archivo.',
+            'datos_originales' => null,
             'created_at' => now(),
             'updated_at' => now(),
         ];

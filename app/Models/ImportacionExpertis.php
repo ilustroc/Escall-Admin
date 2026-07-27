@@ -29,6 +29,10 @@ class ImportacionExpertis extends Model
 
     public const ESTADO_PROCESANDO = 'procesando';
 
+    public const ESTADO_LISTO_PARA_IMPORTAR = 'listo_para_importar';
+
+    public const ESTADO_EN_COLA = 'en_cola';
+
     public const ESTADO_COMPLETADO = 'completado';
 
     public const ESTADO_COMPLETADO_CON_ERRORES = 'completado_con_errores';
@@ -42,6 +46,26 @@ class ImportacionExpertis extends Model
         self::ESTADO_COMPLETADO_CON_ERRORES,
         self::ESTADO_DUPLICADO,
     ];
+
+    public const ESTADOS_ACTIVOS = [
+        self::ESTADO_VALIDANDO,
+        self::ESTADO_EN_COLA,
+        self::ESTADO_PROCESANDO,
+    ];
+
+    public const ESTADOS_TERMINALES = [
+        self::ESTADO_LISTO_PARA_IMPORTAR,
+        self::ESTADO_COMPLETADO,
+        self::ESTADO_COMPLETADO_CON_ERRORES,
+        self::ESTADO_FALLIDO,
+        self::ESTADO_DUPLICADO,
+    ];
+
+    public const FASE_PREPARANDO = 'preparando';
+
+    public const FASE_ESPERANDO_CONFIRMACION = 'esperando_confirmacion';
+
+    public const FASE_IMPORTANDO = 'importando';
 
     protected $table = 'importaciones_expertis';
 
@@ -62,6 +86,12 @@ class ImportacionExpertis extends Model
         'fecha_maxima',
         'iniciado_at',
         'finalizado_at',
+        'heartbeat_at',
+        'queued_at',
+        'progreso_actual',
+        'progreso_total',
+        'fase',
+        'intentos',
         'resumen',
         'mensaje_error',
     ];
@@ -71,8 +101,34 @@ class ImportacionExpertis extends Model
         'fecha_maxima' => 'date',
         'iniciado_at' => 'datetime',
         'finalizado_at' => 'datetime',
+        'heartbeat_at' => 'datetime',
+        'queued_at' => 'datetime',
+        'progreso_actual' => 'integer',
+        'progreso_total' => 'integer',
+        'intentos' => 'integer',
         'resumen' => 'array',
     ];
+
+    public function puedeConfirmar(): bool
+    {
+        return $this->tipo === self::TIPO_ASIGNACIONES
+            && $this->estado === self::ESTADO_LISTO_PARA_IMPORTAR;
+    }
+
+    public function puedeReintentar(): bool
+    {
+        return $this->tipo === self::TIPO_ASIGNACIONES
+            && $this->estado === self::ESTADO_FALLIDO;
+    }
+
+    public function porcentaje(): float
+    {
+        if ($this->progreso_total <= 0) {
+            return 0;
+        }
+
+        return round(min(100, ($this->progreso_actual / $this->progreso_total) * 100), 2);
+    }
 
     public function usuario(): BelongsTo
     {

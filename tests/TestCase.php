@@ -33,6 +33,7 @@ abstract class TestCase extends BaseTestCase
         $migrations = array_merge(
             glob(database_path('migrations/2026_07_23_*_expertis_table.php')),
             glob(database_path('migrations/2026_07_26_*_expertis_table.php')),
+            glob(database_path('migrations/2026_07_27_*.php')),
         );
         sort($migrations);
 

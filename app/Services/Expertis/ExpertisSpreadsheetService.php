@@ -316,6 +316,94 @@ class ExpertisSpreadsheetService
         }
     }
 
+    /**
+     * Recorre la primera hoja de Asignaciones una sola vez.
+     *
+     * @return array{
+     *     encabezados: array,
+     *     columnas_detectadas: array,
+     *     columnas_faltantes: array,
+     *     total_filas_detectadas: int
+     * }
+     */
+    public function recorrerAsignaciones(string $ruta, callable $procesarFila): array
+    {
+        $reader = new Reader(cachingStrategyFactory: $this->sharedStrings);
+        $reader->open($ruta);
+
+        try {
+            foreach ($reader->getSheetIterator() as $sheet) {
+                $encabezados = null;
+                $mapa = [];
+                $numeroFila = 0;
+                $totalFilas = 0;
+
+                foreach ($sheet->getRowIterator() as $row) {
+                    $numeroFila++;
+                    $valores = $row->toArray();
+
+                    if ($this->filaVacia($valores)) {
+                        continue;
+                    }
+
+                    if ($encabezados === null) {
+                        $encabezados = array_map(
+                            fn ($valor) => trim((string) ($valor ?? '')),
+                            $valores,
+                        );
+                        $mapa = $this->mapearEncabezados(
+                            $encabezados,
+                            self::ASIGNACIONES,
+                        );
+                        $faltantes = $this->columnasFaltantes(
+                            $mapa,
+                            self::ASIGNACIONES,
+                        );
+
+                        if ($faltantes !== []) {
+                            throw new RuntimeException(
+                                'Faltan columnas obligatorias: '.implode(', ', $faltantes),
+                            );
+                        }
+
+                        continue;
+                    }
+
+                    $totalFilas++;
+                    $procesarFila([
+                        'numero_fila' => $numeroFila,
+                        'datos' => $this->asociar($valores, $mapa),
+                        'originales' => array_map(
+                            fn ($valor) => $valor instanceof \DateTimeInterface
+                                ? $valor->format('Y-m-d H:i:s')
+                                : $valor,
+                            $valores,
+                        ),
+                    ]);
+                }
+
+                if ($encabezados === null) {
+                    throw new RuntimeException(
+                        'El archivo no contiene encabezados ni filas legibles.',
+                    );
+                }
+
+                return [
+                    'encabezados' => $encabezados,
+                    'columnas_detectadas' => array_values(array_unique(
+                        array_values(array_filter($mapa)),
+                    )),
+                    'columnas_faltantes' => [],
+                    'total_filas_detectadas' => $totalFilas,
+                ];
+            }
+        } finally {
+            $reader->close();
+        }
+
+        throw new RuntimeException('El archivo XLSX no contiene hojas.');
+    }
+
     private function mapearEncabezados(array $encabezados, string $tipo): array
     {
         $definiciones = match ($tipo) {

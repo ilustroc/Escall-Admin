@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Expertis\FiltrarImportacionesExpertisRequest;
 use App\Models\ImportacionExpertis;
 use App\Queries\Expertis\ExpertisImportHistoryQuery;
+use App\Services\Expertis\AsignacionExpertisStatusService;
 use App\Services\Expertis\ExpertisImportDownloadService;
+use App\Services\Expertis\ExpertisImportWorkflowService;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,6 +42,42 @@ class ImportacionExpertisController extends Controller
         ExpertisImportDownloadService $download,
     ) {
         return $download->errors($importacion);
+    }
+
+    public function estado(
+        ImportacionExpertis $importacion,
+        AsignacionExpertisStatusService $status,
+    ): JsonResponse {
+        abort_unless(
+            $importacion->tipo === ImportacionExpertis::TIPO_ASIGNACIONES,
+            404,
+        );
+
+        return response()->json($status->payload($importacion));
+    }
+
+    public function reintentar(
+        ImportacionExpertis $importacion,
+        ExpertisImportWorkflowService $workflow,
+        AsignacionExpertisStatusService $status,
+    ): JsonResponse {
+        abort_unless(
+            $importacion->tipo === ImportacionExpertis::TIPO_ASIGNACIONES,
+            404,
+        );
+
+        try {
+            $workflow->retryAssignmentImport(
+                $importacion,
+                request()->user()->id,
+            );
+        } catch (\RuntimeException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        return response()->json($status->payload($importacion), 202);
     }
 
     private function render(
