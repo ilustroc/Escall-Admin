@@ -48,6 +48,7 @@ Confirma manualmente que existan `users`, `data`, `gestiones`, `pagos` y las tab
 Revisa el SQL de cada migración nueva:
 
 ```bash
+php artisan migrate --pretend --path=database/migrations/2026_07_26_000001_create_asignaciones_expertis_table.php
 php artisan migrate --pretend --path=database/migrations/2026_07_23_000001_create_importaciones_expertis_table.php
 php artisan migrate --pretend --path=database/migrations/2026_07_23_000002_create_tipificaciones_expertis_table.php
 php artisan migrate --pretend --path=database/migrations/2026_07_23_000003_create_gestiones_expertis_table.php
@@ -67,6 +68,14 @@ php artisan migrate --force --path=database/migrations/2026_07_23_000002_create_
 php artisan migrate --force --path=database/migrations/2026_07_23_000003_create_gestiones_expertis_table.php
 php artisan migrate --force --path=database/migrations/2026_07_23_000004_create_pagos_expertis_table.php
 php artisan migrate --force --path=database/migrations/2026_07_23_000005_create_errores_importacion_expertis_table.php
+php artisan migrate --force --path=database/migrations/2026_07_26_000001_create_asignaciones_expertis_table.php
+```
+
+La migración de asignaciones se ejecuta solo después de revisar el SQL de `--pretend`.
+Si las cinco tablas Expertis base ya existen, el único comando nuevo de producción es:
+
+```bash
+php artisan migrate --force --path=database/migrations/2026_07_26_000001_create_asignaciones_expertis_table.php
 ```
 
 Carga el catálogo idempotente:
@@ -89,6 +98,7 @@ Ajusta `www-data` al usuario real del hosting. Verifica en especial la creación
 ```text
 storage/app/private/expertis/gestiones/YYYY/MM
 storage/app/private/expertis/pagos/YYYY/MM
+storage/app/private/expertis/asignaciones/YYYY/MM
 ```
 
 ## 6. Hosting sin Node.js
@@ -126,6 +136,7 @@ Comprueba con un usuario autenticado:
 El rollback elimina datos Expertis. Antes de ejecutarlo, toma otro respaldo y detén importaciones. Revierte en orden inverso:
 
 ```bash
+php artisan migrate:rollback --force --path=database/migrations/2026_07_26_000001_create_asignaciones_expertis_table.php
 php artisan migrate:rollback --force --path=database/migrations/2026_07_23_000005_create_errores_importacion_expertis_table.php
 php artisan migrate:rollback --force --path=database/migrations/2026_07_23_000004_create_pagos_expertis_table.php
 php artisan migrate:rollback --force --path=database/migrations/2026_07_23_000003_create_gestiones_expertis_table.php

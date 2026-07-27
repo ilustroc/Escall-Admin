@@ -15,6 +15,7 @@ class ExpertisImportWorkflowService
         private readonly ExpertisSpreadsheetService $spreadsheet,
         private readonly GestionExpertisImportService $managements,
         private readonly PagoExpertisImportService $payments,
+        private readonly AsignacionExpertisImportService $assignments,
     ) {}
 
     public function preview(
@@ -35,6 +36,9 @@ class ExpertisImportWorkflowService
                 Storage::disk('local')->path($path),
                 $type,
             );
+        } catch (RuntimeException $exception) {
+            Storage::disk('local')->delete($path);
+            throw $exception;
         } catch (\Throwable $exception) {
             Storage::disk('local')->delete($path);
             throw new RuntimeException('No se pudo leer el contenido del XLSX.', 0, $exception);
@@ -101,6 +105,11 @@ class ExpertisImportWorkflowService
                 $userId,
             ),
             ExpertisSpreadsheetService::PAGOS => $this->payments->importar(
+                $metadata['ruta'],
+                $metadata['nombre_original'],
+                $userId,
+            ),
+            ExpertisSpreadsheetService::ASIGNACIONES => $this->assignments->importar(
                 $metadata['ruta'],
                 $metadata['nombre_original'],
                 $userId,

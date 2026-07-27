@@ -110,3 +110,48 @@ Un archivo con columnas obligatorias faltantes no obtiene token de importación 
 - `storage/app/examples/pagos_expertis_ejemplo.xlsx`
 
 Todos los datos son ficticios.
+
+## Asignaciones
+
+El archivo mensual requiere estos 26 encabezados:
+
+| Encabezado | Valor obligatorio | Regla |
+|---|---:|---|
+| PERIODO | Sí | `YYYYMM`, un único periodo por archivo |
+| EMPRESA | Sí | Debe ser `EXPERTIS` |
+| DNI | Sí | Ocho dígitos; conserva ceros iniciales |
+| TITULAR | Sí | Máximo 255 caracteres |
+| CODIGO | No | El encabezado debe existir; el backend siempre lo calcula |
+| TIPO DE CARTERA | Sí | Forma el código junto con el DNI |
+| COSECHA | No | Texto opcional |
+| SUB COSECHA | No | Texto opcional |
+| PRODUCTO | No | Texto opcional |
+| SUB_PRODUCTO | No | Texto opcional |
+| HISTORICO | No | Texto opcional |
+| DEPARTAMENTO | No | Texto opcional |
+| DEUDA TOTAL | Sí | Monto con punto o coma decimal |
+| DEUDA CAPITAL | Sí | Monto con punto o coma decimal |
+| CAMPAÑA | No | Monto opcional |
+| % | No | Decimal sin multiplicar ni dividir |
+| AÑO_NACIMIENTO | No | Fecha Excel, `dd/mm/yyyy` o `yyyy-mm-dd` |
+| EDAD | No | Entero entre 0 y 120 |
+| ENTIDADES | No | Entero no negativo |
+| NEGOCIO | No | Texto opcional |
+| SUELDO | No | Monto opcional |
+| SITUACION_LABORAL | No | Texto opcional |
+| AÑO_LABORAL | No | Entero entre 1900 y 2100 |
+| SEXO | No | `M` o `F` |
+| RANGO_SUELDO | No | Texto opcional |
+| AÑO_CASTIGO | No | Entero entre 1900 y 2100 |
+
+En campos opcionales, `-`, vacío y `NULL` se guardan como null. La regla
+`CODIGO = DNI-TIPO DE CARTERA` pertenece solo a Expertis; un código enviado que no coincida
+se registra como error.
+
+La vista previa examina la hoja completa por streaming, devuelve periodo, empresa y total,
+y muestra como máximo 20 filas. La importación procesa lotes de 1000. Al reimportar un
+periodo, los registros idénticos se cuentan como duplicados y los modificados se
+actualizan; no se borra el periodo completo.
+
+La plantilla oficial se descarga desde **Cargas → Expertis Asignaciones** e incluye tres
+registros ficticios con DNI `00000001`, `00000002` y `00000003`.

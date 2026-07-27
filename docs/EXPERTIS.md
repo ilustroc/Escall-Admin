@@ -149,4 +149,44 @@ El normalizador tolera `S/`, `S/.`, espacios, punto o coma decimal y texto poste
 - Las descargas pasan por un controlador autenticado; nunca exponen la ruta física.
 - Las plantillas XLSX se generan bajo demanda y son verificadas con el mismo lector del importador.
 - Las consultas usan Eloquent o Query Builder parametrizado.
+
+## Asignaciones mensuales
+
+`asignaciones_expertis` conserva cada cartera mensual sin reemplazar periodos anteriores.
+La clave única es `periodo + empresa + codigo_normalizado`; `hash_fila` está indexado, pero
+no es único. Los índices `codigo_normalizado + periodo`, `dni + periodo`,
+`periodo + tipo_cartera` y `periodo + departamento` soportan el listado y el futuro cruce
+con pagos.
+
+El código se calcula exclusivamente en `AsignacionExpertisDataMapper` como
+`DNI normalizado + "-" + TIPO DE CARTERA normalizado`. Esta regla no se aplica a otros
+módulos. Si el XLSX incluye un código diferente, la fila queda registrada como error.
+
+La vista previa recorre toda la primera hoja con OpenSpout para confirmar un único periodo
+`YYYYMM`, empresa `EXPERTIS` y total de filas, pero conserva solo las primeras 20. La carga
+usa `EXPERTIS_IMPORT_CHUNK_SIZE` (1000 por defecto), transacciones cortas y un upsert masivo
+por lote:
+
+- clave nueva: insertada;
+- misma clave y mismo hash: duplicada;
+- misma clave y hash distinto: actualizada;
+- clave repetida con datos diferentes dentro del archivo: error.
+
+No se elimina el periodo ni se borran clientes ausentes en una reimportación. El listado
+`/expertis/asignaciones` selecciona el último periodo disponible y pagina 50 filas. La
+exportación usa un cursor y OpenSpout, por lo que no carga aproximadamente 40 000 registros
+en memoria. La plantilla se genera bajo demanda con tres registros ficticios.
+
+La futura relación con pagos queda preparada así:
+
+```text
+pagos_expertis.cuenta_normalizada
+= asignaciones_expertis.codigo_normalizado
+
+asignaciones_expertis.periodo
+= DATE_FORMAT(pagos_expertis.fecha, '%Y%m')
+
+asignaciones_expertis.empresa
+= 'EXPERTIS'
+```
 - Las excepciones internas se registran y se muestra un mensaje genérico.

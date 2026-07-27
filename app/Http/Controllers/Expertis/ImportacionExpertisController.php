@@ -52,6 +52,11 @@ class ImportacionExpertisController extends Controller
             'importaciones' => $history->paginate($filters),
             'seleccionada' => $selected ? $history->selected($selected) : null,
             'filtros' => $filters,
+            'tipos' => [
+                ['value' => ImportacionExpertis::TIPO_ASIGNACIONES, 'label' => 'Asignaciones'],
+                ['value' => ImportacionExpertis::TIPO_GESTIONES, 'label' => 'Gestiones'],
+                ['value' => ImportacionExpertis::TIPO_PAGOS, 'label' => 'Pagos'],
+            ],
         ]);
     }
 }

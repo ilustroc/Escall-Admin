@@ -9,6 +9,12 @@ const props = defineProps({
     },
 });
 
+const period = computed(() => (
+    props.summary.resumen?.periodo
+    ?? props.summary.periodo
+    ?? null
+));
+
 const stats = computed(() => [
     {
         label: 'Total',
@@ -106,6 +112,18 @@ function formatDate(value) {
 
 <template>
     <section class="min-w-0">
+        <div
+            v-if="period"
+            class="mb-3 rounded-xl border border-blue-100 bg-[#EEF4FF] px-4 py-3"
+        >
+            <p class="text-[10px] font-bold uppercase tracking-[0.08em] text-[#073DC7]">
+                Periodo
+            </p>
+            <p class="mt-1 text-base font-bold text-[#172033]">
+                {{ period }}
+            </p>
+        </div>
+
         <!--
             Este resumen está diseñado para el panel lateral.
             Siempre usa dos columnas para evitar que las tarjetas

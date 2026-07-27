@@ -56,11 +56,13 @@ const validating = ref(false);
 const processing = ref(false);
 const confirmOpen = ref(false);
 
-const title = computed(() => (
-    props.type === 'gestiones'
-        ? 'gestiones'
-        : 'pagos'
-));
+const typeNames = {
+    gestiones: 'gestiones',
+    pagos: 'pagos',
+    asignaciones: 'asignaciones',
+};
+
+const title = computed(() => typeNames[props.type] ?? props.type);
 
 const previewColumns = computed(() => (
     preview.value?.columnas_detectadas ?? []
@@ -325,6 +327,26 @@ function formatDateTime(value) {
                     #{{ preview.archivo_duplicado.id }}.
 
                     Si confirmas, el archivo no se procesará nuevamente.
+                </div>
+
+                <div
+                    v-if="type === 'asignaciones'"
+                    class="mb-4 grid gap-3 sm:grid-cols-3"
+                >
+                    <div class="rounded-xl border border-blue-100 bg-[#EEF4FF] px-4 py-3">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-[#073DC7]">Periodo</p>
+                        <p class="mt-1 text-sm font-bold text-[#172033]">{{ preview.periodo_detectado ?? '—' }}</p>
+                    </div>
+                    <div class="rounded-xl border border-blue-100 bg-[#EEF4FF] px-4 py-3">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-[#073DC7]">Empresa</p>
+                        <p class="mt-1 text-sm font-bold text-[#172033]">{{ preview.empresa_detectada ?? '—' }}</p>
+                    </div>
+                    <div class="rounded-xl border border-blue-100 bg-[#EEF4FF] px-4 py-3">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-[#073DC7]">Filas detectadas</p>
+                        <p class="mt-1 text-sm font-bold text-[#172033]">
+                            {{ Number(preview.total_filas_detectadas ?? 0).toLocaleString('es-PE') }}
+                        </p>
+                    </div>
                 </div>
 
                 <AppTable

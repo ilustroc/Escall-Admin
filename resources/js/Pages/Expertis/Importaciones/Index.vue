@@ -14,6 +14,7 @@ const props = defineProps({
     importaciones: { type: Object, required: true },
     seleccionada: { type: Object, default: null },
     filtros: { type: Object, default: () => ({}) },
+    tipos: { type: Array, required: true },
 });
 
 const filters = reactive({
@@ -34,6 +35,7 @@ const columns = [
     { key: 'filas_actualizadas', label: 'Actualizadas' },
     { key: 'filas_duplicadas', label: 'Duplicadas' },
     { key: 'filas_error', label: 'Errores' },
+    { key: 'periodo', label: 'Periodo' },
     { key: 'rango', label: 'Rango' },
     { key: 'duracion', label: 'Duración' },
     { key: 'acciones', label: '' },
@@ -55,6 +57,10 @@ function tone(status) {
     return 'info';
 }
 
+function typeLabel(value) {
+    return props.tipos.find((type) => type.value === value)?.label ?? value;
+}
+
 function duration(row) {
     if (!row.iniciado_at || !row.finalizado_at) return '—';
     const seconds = Math.max(0, Math.round((new Date(row.finalizado_at) - new Date(row.iniciado_at)) / 1000));
@@ -70,7 +76,7 @@ function duration(row) {
     >
         <section class="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
             <form class="grid gap-3 md:grid-cols-2 xl:grid-cols-5" @submit.prevent="applyFilters">
-                <AppSelect v-model="filters.tipo" label="Tipo" :options="[{ value: 'gestiones', label: 'Gestiones' }, { value: 'pagos', label: 'Pagos' }]" />
+                <AppSelect v-model="filters.tipo" label="Tipo" :options="tipos" />
                 <AppSelect
                     v-model="filters.estado"
                     label="Estado"
@@ -90,7 +96,7 @@ function duration(row) {
 
         <AppTable :columns="columns" :rows="importaciones.data">
             <template #cell-created_at="{ value }">{{ new Date(value).toLocaleString('es-PE') }}</template>
-            <template #cell-tipo="{ value }"><AppBadge tone="info">{{ value }}</AppBadge></template>
+            <template #cell-tipo="{ value }"><AppBadge tone="info">{{ typeLabel(value) }}</AppBadge></template>
             <template #cell-nombre_original="{ row }">
                 <div class="max-w-[240px]">
                     <p class="truncate font-semibold text-[#172033]">{{ row.nombre_original }}</p>
@@ -99,6 +105,7 @@ function duration(row) {
             </template>
             <template #cell-usuario="{ row }">{{ row.usuario?.name ?? 'Sistema' }}</template>
             <template #cell-estado="{ value }"><AppBadge :tone="tone(value)">{{ value.replaceAll('_', ' ') }}</AppBadge></template>
+            <template #cell-periodo="{ row }">{{ row.resumen?.periodo ?? '—' }}</template>
             <template #cell-rango="{ row }"><span class="text-xs">{{ row.fecha_minima ?? '—' }}<br>{{ row.fecha_maxima ?? '—' }}</span></template>
             <template #cell-duracion="{ row }">{{ duration(row) }}</template>
             <template #cell-acciones="{ row }">

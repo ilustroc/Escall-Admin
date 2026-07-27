@@ -30,7 +30,13 @@ abstract class TestCase extends BaseTestCase
 
         $this->createLegacyTables();
 
-        foreach (glob(database_path('migrations/2026_07_23_*_expertis_table.php')) as $path) {
+        $migrations = array_merge(
+            glob(database_path('migrations/2026_07_23_*_expertis_table.php')),
+            glob(database_path('migrations/2026_07_26_*_expertis_table.php')),
+        );
+        sort($migrations);
+
+        foreach ($migrations as $path) {
             $migration = require $path;
             $migration->up();
         }

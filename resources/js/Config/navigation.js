@@ -20,11 +20,17 @@ export const navigation = [
             {
                 label: 'Cargas',
                 icon: ArrowUpTrayIcon,
-                match: ['/cargas', '/expertis/importaciones/gestiones', '/expertis/importaciones/pagos'],
+                match: [
+                    '/cargas',
+                    '/expertis/importaciones/asignaciones',
+                    '/expertis/importaciones/gestiones',
+                    '/expertis/importaciones/pagos',
+                ],
                 children: [
                     { label: 'Gestiones por SP', href: '/cargas/sp' },
                     { label: 'Cartera', href: '/cargas/data' },
                     { label: 'Pagos', href: '/cargas/pagos' },
+                    { label: 'Expertis Asignaciones', href: '/expertis/importaciones/asignaciones' },
                     { label: 'Expertis Gestiones', href: '/expertis/importaciones/gestiones' },
                     { label: 'Expertis Pagos', href: '/expertis/importaciones/pagos' },
                 ],
@@ -37,6 +43,7 @@ export const navigation = [
                 children: [
                     { label: 'Dashboard Expertis', href: '/expertis', exact: true },
                     { label: 'Historial', href: '/expertis/importaciones' },
+                    { label: 'Asignaciones', href: '/expertis/asignaciones' },
                     { label: 'Gestiones', href: '/expertis/gestiones' },
                     { label: 'Pagos', href: '/expertis/pagos' },
                     { label: 'Tipificaciones', href: '/expertis/tipificaciones' },

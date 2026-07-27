@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Expertis\AsignacionExpertisController;
+use App\Http\Controllers\Expertis\AsignacionExpertisImportController;
 use App\Http\Controllers\Expertis\ExpertisDashboardController;
 use App\Http\Controllers\Expertis\ExpertisReportController;
 use App\Http\Controllers\Expertis\GestionExpertisController;
@@ -15,6 +17,14 @@ Route::prefix('expertis')->name('expertis.')->group(function (): void {
 
     Route::prefix('importaciones')->name('importaciones.')->group(function (): void {
         Route::get('/', [ImportacionExpertisController::class, 'index'])->name('index');
+        Route::get('/asignaciones', [AsignacionExpertisImportController::class, 'create'])
+            ->name('asignaciones.create');
+        Route::get('/asignaciones/plantilla', [AsignacionExpertisImportController::class, 'plantilla'])
+            ->name('asignaciones.plantilla');
+        Route::post('/asignaciones/preview', [AsignacionExpertisImportController::class, 'preview'])
+            ->name('asignaciones.preview');
+        Route::post('/asignaciones', [AsignacionExpertisImportController::class, 'store'])
+            ->name('asignaciones.store');
         Route::get('/gestiones', [GestionExpertisImportController::class, 'create'])
             ->name('gestiones.create');
         Route::get('/gestiones/plantilla', [GestionExpertisImportController::class, 'plantilla'])
@@ -41,6 +51,10 @@ Route::prefix('expertis')->name('expertis.')->group(function (): void {
             ->name('errores');
     });
 
+    Route::get('/asignaciones/export', [AsignacionExpertisController::class, 'export'])
+        ->name('asignaciones.export');
+    Route::get('/asignaciones', [AsignacionExpertisController::class, 'index'])
+        ->name('asignaciones.index');
     Route::get('/gestiones/export', [GestionExpertisController::class, 'export'])
         ->name('gestiones.export');
     Route::get('/gestiones', [GestionExpertisController::class, 'index'])

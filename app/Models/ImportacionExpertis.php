@@ -15,6 +15,14 @@ class ImportacionExpertis extends Model
 
     public const TIPO_PAGOS = 'pagos';
 
+    public const TIPO_ASIGNACIONES = 'asignaciones';
+
+    public const TIPOS = [
+        self::TIPO_ASIGNACIONES,
+        self::TIPO_GESTIONES,
+        self::TIPO_PAGOS,
+    ];
+
     public const ESTADO_PENDIENTE = 'pendiente';
 
     public const ESTADO_VALIDANDO = 'validando';
@@ -79,6 +87,11 @@ class ImportacionExpertis extends Model
     public function gestiones(): HasMany
     {
         return $this->hasMany(GestionExpertis::class);
+    }
+
+    public function asignaciones(): HasMany
+    {
+        return $this->hasMany(AsignacionExpertis::class);
     }
 
     public function pagos(): HasMany

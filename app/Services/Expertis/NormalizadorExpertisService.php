@@ -248,6 +248,48 @@ class NormalizadorExpertisService
         ], JSON_UNESCAPED_UNICODE));
     }
 
+    public function hashAsignacion(array $asignacion): string
+    {
+        $campos = [
+            'periodo',
+            'empresa',
+            'dni',
+            'titular',
+            'codigo_normalizado',
+            'tipo_cartera',
+            'cosecha',
+            'sub_cosecha',
+            'producto',
+            'sub_producto',
+            'historico',
+            'departamento',
+            'deuda_total',
+            'deuda_capital',
+            'campania',
+            'porcentaje',
+            'fecha_nacimiento',
+            'edad',
+            'entidades',
+            'negocio',
+            'sueldo',
+            'situacion_laboral',
+            'anio_laboral',
+            'sexo',
+            'rango_sueldo',
+            'anio_castigo',
+        ];
+
+        $valores = [];
+        foreach ($campos as $campo) {
+            $valores[$campo] = $asignacion[$campo] ?? null;
+        }
+
+        return hash(
+            'sha256',
+            json_encode($valores, JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION),
+        );
+    }
+
     public function montoProyectado(mixed $monto, mixed $nivel2, mixed $observacion): string
     {
         $montoNormalizado = $this->monto($monto) ?? '0.00';
