@@ -79,8 +79,7 @@ function submit() {
                 <AppButton type="submit" class="mt-5 w-full" :loading="form.processing"><BanknotesIcon class="h-4 w-4" />Guardar pago</AppButton>
             </section>
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="mb-4 font-bold">Snapshot de la cuenta</h2>
-                <Alert v-if="lookupState === 'idle'" tone="info">Ingresa un código para completar automáticamente los datos.</Alert>
+                <h2 class="mb-4 font-bold">Registro de la cuenta</h2>
                 <div class="grid gap-4 sm:grid-cols-2">
                     <AppInput v-model="form.dni" label="DNI" />
                     <AppInput v-model="form.nombre" label="Cliente" />

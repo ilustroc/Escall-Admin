@@ -124,10 +124,10 @@ El archivo mensual requiere estos 26 encabezados:
 |---|---:|---|
 | PERIODO | Sí | `YYYYMM`, un único periodo por archivo |
 | EMPRESA | Sí | Debe ser `EXPERTIS` |
-| DNI | Sí | Ocho dígitos; conserva ceros iniciales |
+| DOCUMENTO | Sí | DNI, RUC o carnet de extranjería; de 6 a 20 caracteres alfanuméricos |
 | TITULAR | Sí | Máximo 255 caracteres |
 | CODIGO | No | El encabezado debe existir; el backend siempre lo calcula |
-| TIPO DE CARTERA | Sí | Forma el código junto con el DNI |
+| TIPO DE CARTERA | Sí | Forma el código junto con el documento |
 | COSECHA | No | Texto opcional |
 | SUB COSECHA | No | Texto opcional |
 | PRODUCTO | No | Texto opcional |
@@ -150,8 +150,20 @@ El archivo mensual requiere estos 26 encabezados:
 | AÑO_CASTIGO | No | Entero entre 1900 y 2100 |
 
 En campos opcionales, `-`, vacío y `NULL` se guardan como null. La regla
-`CODIGO = DNI-TIPO DE CARTERA` pertenece solo a Expertis; un código enviado que no coincida
-se registra como error.
+`CODIGO = DOCUMENTO-TIPO DE CARTERA` pertenece solo a Expertis; un código enviado que no
+coincida se registra como error. El encabezado anterior `DNI` continúa aceptándose para
+no romper archivos existentes, pero las plantillas y exportaciones nuevas usan
+`DOCUMENTO`.
+
+El documento se guarda como texto en mayúsculas. Los DNI numéricos de hasta ocho dígitos
+conservan el comportamiento anterior y se completan con ceros a la izquierda; un RUC de
+once dígitos y un carnet alfanumérico, por ejemplo `CE000003`, se conservan completos.
+Conviene formatear la columna como texto en Excel para evitar notación científica o pérdida
+de ceros iniciales.
+
+En `asignaciones_expertis` la columna física es `documento`. La migración que reemplaza
+la antigua columna `dni` descarta las asignaciones, el historial de sus importaciones y
+sus jobs pendientes o fallidos; la primera carga posterior comienza desde cero.
 
 Un Job examina la hoja completa por streaming una sola vez, devuelve periodo, empresa y
 total, y muestra como máximo 20 filas válidas. Las filas normalizadas se guardan en bloques
@@ -164,4 +176,5 @@ valor como `1`, `5`, `NO` o `SIN DATO` se registra como error de esa fila; no se
 automáticamente y no detiene las demás filas válidas.
 
 La plantilla oficial se descarga desde **Cargas → Expertis Asignaciones** e incluye tres
-registros ficticios con DNI `00000001`, `00000002` y `00000003`.
+documentos ficticios de ejemplo: DNI `00000001`, RUC `20123456789` y carnet
+`CE000003`.

@@ -17,6 +17,8 @@ interactivos, como correos.
 - reportes Impulse, KP Invest, carteras y TEC Center;
 - Expertis:
   - importación XLSX de asignaciones mensuales, gestiones y pagos;
+  - documentos de asignación compatibles con DNI, RUC y carnet de extranjería;
+  - columna física `documento` en las asignaciones Expertis;
   - upsert de asignaciones por periodo, empresa y código;
   - detección de archivos y filas duplicadas;
   - historial y errores de importación;

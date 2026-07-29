@@ -39,17 +39,64 @@ class AsignacionExpertisDataMapperTest extends TestCase
         $this->mapper->periodo('202613');
     }
 
-    public function test_dni_conserva_ceros_y_codigo_se_genera_automaticamente(): void
+    public function test_documento_dni_conserva_ceros_y_genera_codigo(): void
     {
         $fila = $this->map($this->fila([
-            'dni' => 1,
+            'documento' => 1,
             'codigo' => '',
             'tipo_cartera' => 'los andes',
         ]));
 
-        $this->assertSame('00000001', $fila['dni']);
+        $this->assertSame('00000001', $fila['documento']);
         $this->assertSame('00000001-LOS ANDES', $fila['codigo']);
         $this->assertSame('1-LOS ANDES', $fila['codigo_normalizado']);
+    }
+
+    public function test_acepta_ruc_y_carnet_de_extranjeria(): void
+    {
+        $ruc = $this->map($this->fila([
+            'documento' => '20123456789',
+            'codigo' => '20123456789-LOS ANDES',
+        ]));
+        $ce = $this->map($this->fila([
+            'documento' => 'ce-001234',
+            'codigo' => 'CE001234-LOS ANDES',
+        ]));
+
+        $this->assertSame('20123456789', $ruc['documento']);
+        $this->assertSame('20123456789-LOS ANDES', $ruc['codigo']);
+        $this->assertSame('CE001234', $ce['documento']);
+        $this->assertSame('CE001234-LOS ANDES', $ce['codigo']);
+        $this->assertSame(
+            'CE001234-LOS ANDES',
+            $ce['codigo_normalizado'],
+        );
+    }
+
+    public function test_rechaza_documento_vacio_o_demasiado_corto(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'El documento debe contener entre 6 y 20 caracteres alfanuméricos.',
+        );
+
+        $this->map($this->fila([
+            'documento' => 'A-1',
+            'codigo' => '',
+        ]));
+    }
+
+    public function test_rechaza_documento_mayor_a_20_caracteres(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'El documento debe contener entre 6 y 20 caracteres alfanuméricos.',
+        );
+
+        $this->map($this->fila([
+            'documento' => str_repeat('A', 21),
+            'codigo' => '',
+        ]));
     }
 
     public function test_acepta_codigo_enviado_cuando_coincide(): void
@@ -65,7 +112,7 @@ class AsignacionExpertisDataMapperTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage(
-            'El código no coincide con el DNI y el tipo de cartera para Expertis.',
+            'El código no coincide con el documento y el tipo de cartera para Expertis.',
         );
 
         $this->map($this->fila(['codigo' => '00000001-PRO']));
@@ -180,7 +227,7 @@ class AsignacionExpertisDataMapperTest extends TestCase
         return array_merge([
             'periodo' => '202607',
             'empresa' => 'EXPERTIS',
-            'dni' => '00000001',
+            'documento' => '00000001',
             'titular' => 'CLIENTE FICTICIO',
             'codigo' => '00000001-LOS ANDES',
             'tipo_cartera' => 'LOS ANDES',

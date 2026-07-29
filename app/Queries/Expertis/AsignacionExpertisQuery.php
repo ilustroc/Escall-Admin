@@ -23,7 +23,7 @@ class AsignacionExpertisQuery
                 'id',
                 'periodo',
                 'empresa',
-                'dni',
+                'documento',
                 'titular',
                 'codigo',
                 'codigo_normalizado',
@@ -54,7 +54,14 @@ class AsignacionExpertisQuery
                 'updated_at',
             ])
             ->when($filtros['periodo'] ?? null, fn ($q, $valor) => $q->where('periodo', $valor))
-            ->when($filtros['dni'] ?? null, fn ($q, $valor) => $q->where('dni', 'like', '%'.$valor.'%'))
+            ->when(
+                $filtros['documento'] ?? $filtros['dni'] ?? null,
+                fn ($q, $valor) => $q->where(
+                    'documento',
+                    'like',
+                    '%'.$valor.'%',
+                ),
+            )
             ->when($filtros['codigo'] ?? null, fn ($q, $valor) => $q->where('codigo', 'like', '%'.$valor.'%'))
             ->when($filtros['titular'] ?? null, fn ($q, $valor) => $q->where('titular', 'like', '%'.$valor.'%'))
             ->when($filtros['tipo_cartera'] ?? null, fn ($q, $valor) => $q->where('tipo_cartera', $valor))

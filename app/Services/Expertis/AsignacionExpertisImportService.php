@@ -13,7 +13,7 @@ class AsignacionExpertisImportService
 {
     private const CAMPOS_ACTUALIZABLES = [
         'importacion_expertis_id',
-        'dni',
+        'documento',
         'titular',
         'codigo',
         'tipo_cartera',

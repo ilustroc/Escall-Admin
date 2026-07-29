@@ -17,7 +17,7 @@ const props = defineProps({
 
 const filters = reactive({
     periodo: props.filtros.periodo ?? '',
-    dni: props.filtros.dni ?? '',
+    documento: props.filtros.documento ?? props.filtros.dni ?? '',
     codigo: props.filtros.codigo ?? '',
     titular: props.filtros.titular ?? '',
     tipo_cartera: props.filtros.tipo_cartera ?? '',
@@ -30,7 +30,7 @@ let debounceTimer;
 const columns = [
     { key: 'periodo', label: 'PERIODO' },
     { key: 'empresa', label: 'EMPRESA' },
-    { key: 'dni', label: 'DNI' },
+    { key: 'documento', label: 'DOCUMENTO' },
     { key: 'titular', label: 'TITULAR' },
     { key: 'codigo', label: 'CODIGO' },
     { key: 'tipo_cartera', label: 'TIPO DE CARTERA' },
@@ -82,7 +82,7 @@ function debouncedFilter() {
 function clearFilters() {
     Object.assign(filters, {
         periodo: props.opciones.periodos?.[0] ?? '',
-        dni: '',
+        documento: '',
         codigo: '',
         titular: '',
         tipo_cartera: '',
@@ -128,7 +128,12 @@ function date(value) {
         <section class="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <AppSelect v-model="filters.periodo" label="Periodo" :options="opciones.periodos" @change="applyFilters" />
-                <AppInput v-model="filters.dni" label="DNI" @input="debouncedFilter" />
+                <AppInput
+                    v-model="filters.documento"
+                    label="Documento"
+                    placeholder="DNI, RUC o CE"
+                    @input="debouncedFilter"
+                />
                 <AppInput v-model="filters.codigo" label="Código" @input="debouncedFilter" />
                 <AppInput v-model="filters.titular" label="Titular" @input="debouncedFilter" />
                 <AppSelect v-model="filters.tipo_cartera" label="Tipo de cartera" :options="opciones.tipos_cartera" @change="applyFilters" />
@@ -142,7 +147,7 @@ function date(value) {
         </section>
 
         <AppTable :columns="columns" :rows="asignaciones.data">
-            <template #cell-dni="{ value }"><span class="font-mono">{{ value }}</span></template>
+            <template #cell-documento="{ value }"><span class="font-mono">{{ value }}</span></template>
             <template #cell-codigo="{ value }"><strong class="text-[#172033]">{{ value }}</strong></template>
             <template #cell-deuda_total="{ value }">{{ money(value) }}</template>
             <template #cell-deuda_capital="{ value }">{{ money(value) }}</template>

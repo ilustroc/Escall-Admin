@@ -150,12 +150,12 @@ class ExpertisAssignmentLargeImportTest extends TestCase
         ));
 
         for ($i = 1; $i <= $cantidad; $i++) {
-            $dni = str_pad((string) $i, 8, '0', STR_PAD_LEFT);
+            $documento = str_pad((string) $i, 8, '0', STR_PAD_LEFT);
             $cartera = $i % 2 === 0 ? 'PRO' : 'LOS ANDES';
             $writer->addRow(Row::fromValues([
                 202607,
                 'EXPERTIS',
-                $dni,
+                $documento,
                 'CLIENTE FICTICIO '.$i,
                 '',
                 $cartera,

@@ -52,7 +52,8 @@ Conserva cuenta visible, clave normalizada, monto y `hash_fila` único. Un pago 
 ## Normalización
 
 - Los encabezados ignoran mayúsculas, tildes, guiones bajos y espacios repetidos.
-- El DNI visible se mantiene como texto y se completa hasta ocho dígitos.
+- En asignaciones, el documento se mantiene como texto; los DNI numéricos de hasta
+  ocho dígitos se completan con ceros a la izquierda.
 - La clave de cruce elimina ceros iniciales solo de la parte documental.
 - Teléfonos conservan únicamente dígitos.
 - Fechas aceptan valores de Excel, `dd/mm/yyyy`, `yyyy-mm-dd` y esos mismos formatos con hora.
@@ -160,13 +161,21 @@ El normalizador tolera `S/`, `S/.`, espacios, punto o coma decimal y texto poste
 
 `asignaciones_expertis` conserva cada cartera mensual sin reemplazar periodos anteriores.
 La clave única es `periodo + empresa + codigo_normalizado`; `hash_fila` está indexado, pero
-no es único. Los índices `codigo_normalizado + periodo`, `dni + periodo`,
+no es único. Los índices `codigo_normalizado + periodo`, `documento + periodo`,
 `periodo + tipo_cartera` y `periodo + departamento` soportan el listado y el futuro cruce
 con pagos.
 
 El código se calcula exclusivamente en `AsignacionExpertisDataMapper` como
-`DNI normalizado + "-" + TIPO DE CARTERA normalizado`. Esta regla no se aplica a otros
-módulos. Si el XLSX incluye un código diferente, la fila queda registrada como error.
+`DOCUMENTO normalizado + "-" + TIPO DE CARTERA normalizado`. El documento admite DNI,
+RUC y carnet de extranjería de 6 a 20 caracteres alfanuméricos. Esta regla no se aplica a
+otros módulos. Si el XLSX incluye un código diferente, la fila queda registrada como
+error. El encabezado legacy `DNI` sigue siendo compatible.
+
+La columna física también se llama `documento`. La migración
+`2026_07_29_000001_replace_dni_with_documento_in_asignaciones_expertis_table`
+elimina previamente todas las asignaciones y su historial de importación para evitar que
+los hashes antiguos bloqueen una carga nueva. También descarta jobs pendientes o fallidos
+de asignaciones. Gestiones, pagos y los demás jobs no se eliminan.
 
 La preparación se ejecuta fuera de HTTP mediante Laravel Queue. Abre la primera hoja con
 OpenSpout una sola vez, confirma un único periodo `YYYYMM` y empresa `EXPERTIS`, conserva

@@ -28,14 +28,32 @@ class NormalizadorExpertisService
         return $digitos;
     }
 
+    public function documento(mixed $valor): string
+    {
+        $documento = Str::ascii(
+            mb_strtoupper(trim($this->textoCrudo($valor)), 'UTF-8'),
+        );
+        $documento = preg_replace('/[\s.\-]+/', '', $documento) ?? '';
+
+        if (
+            $documento !== ''
+            && ctype_digit($documento)
+            && strlen($documento) <= 8
+        ) {
+            return str_pad($documento, 8, '0', STR_PAD_LEFT);
+        }
+
+        return $documento;
+    }
+
     public function cartera(mixed $valor): string
     {
         return $this->texto($valor) ?? '';
     }
 
-    public function codigoVisible(mixed $dni, mixed $cartera): string
+    public function codigoVisible(mixed $documento, mixed $cartera): string
     {
-        $documento = $this->dni($dni);
+        $documento = $this->documento($documento);
         $carteraNormalizada = $this->cartera($cartera);
 
         return trim($documento.'-'.$carteraNormalizada, '-');
@@ -45,9 +63,13 @@ class NormalizadorExpertisService
     {
         $codigo = $this->texto($codigo) ?? '';
         [$documento, $cartera] = array_pad(explode('-', $codigo, 2), 2, '');
-        $documento = preg_replace('/\D+/', '', $documento) ?? '';
-        $documento = ltrim($documento, '0');
-        $documento = $documento === '' ? '0' : $documento;
+        $documento = Str::ascii(mb_strtoupper($documento, 'UTF-8'));
+        $documento = preg_replace('/[^A-Z0-9]+/', '', $documento) ?? '';
+
+        if ($documento !== '' && ctype_digit($documento)) {
+            $documento = ltrim($documento, '0');
+            $documento = $documento === '' ? '0' : $documento;
+        }
 
         return trim($documento.'-'.$this->cartera($cartera), '-');
     }
@@ -253,7 +275,7 @@ class NormalizadorExpertisService
         $campos = [
             'periodo',
             'empresa',
-            'dni',
+            'documento',
             'titular',
             'codigo_normalizado',
             'tipo_cartera',

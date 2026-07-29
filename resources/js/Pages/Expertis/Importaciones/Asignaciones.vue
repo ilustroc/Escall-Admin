@@ -17,7 +17,7 @@ defineProps({
     >
         <PageHeader
             title="Asignaciones Expertis"
-            description="El XLSX se lee una sola vez. Después de validar periodo, empresa y filas, podrás confirmar la importación desde el detalle."
+            description="La columna DOCUMENTO admite DNI, RUC y carnet de extranjería. Después de validar el XLSX podrás confirmar la importación desde el detalle."
         />
 
         <ExpertisImportForm
@@ -28,7 +28,7 @@ defineProps({
             :required-columns="[
                 'PERIODO',
                 'EMPRESA',
-                'DNI',
+                'DOCUMENTO',
                 'TITULAR',
                 'TIPO DE CARTERA',
                 'DEUDA TOTAL',

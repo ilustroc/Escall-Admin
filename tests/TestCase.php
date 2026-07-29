@@ -34,6 +34,7 @@ abstract class TestCase extends BaseTestCase
             glob(database_path('migrations/2026_07_23_*_expertis_table.php')),
             glob(database_path('migrations/2026_07_26_*_expertis_table.php')),
             glob(database_path('migrations/2026_07_27_*.php')),
+            glob(database_path('migrations/2026_07_29_*.php')),
         );
         sort($migrations);
 

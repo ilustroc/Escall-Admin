@@ -63,6 +63,7 @@ php artisan migrate --pretend --path=database/migrations/2026_07_23_000004_creat
 php artisan migrate --pretend --path=database/migrations/2026_07_23_000005_create_errores_importacion_expertis_table.php
 php artisan migrate --pretend --path=database/migrations/2026_07_27_000001_add_queue_tracking_to_importaciones_expertis_table.php
 php artisan migrate --pretend --path=database/migrations/2026_07_27_000002_create_queue_tables.php
+php artisan migrate --pretend --path=database/migrations/2026_07_29_000001_replace_dni_with_documento_in_asignaciones_expertis_table.php
 ```
 
 No se modifica la migración antigua `2026_01_05_220129_create_pagos_table.php`, porque algunos entornos ya tienen `pagos` manual y otros la registraron como ejecutada.
@@ -80,13 +81,19 @@ php artisan migrate --force --path=database/migrations/2026_07_23_000005_create_
 php artisan migrate --force --path=database/migrations/2026_07_26_000001_create_asignaciones_expertis_table.php
 php artisan migrate --force --path=database/migrations/2026_07_27_000001_add_queue_tracking_to_importaciones_expertis_table.php
 php artisan migrate --force --path=database/migrations/2026_07_27_000002_create_queue_tables.php
+php artisan migrate --force --path=database/migrations/2026_07_29_000001_replace_dni_with_documento_in_asignaciones_expertis_table.php
 ```
 
-La migración de asignaciones se ejecuta solo después de revisar el SQL de `--pretend`.
-Si las cinco tablas Expertis base ya existen, el único comando nuevo de producción es:
+La última migración es destructiva: elimina todas las asignaciones existentes, sus errores,
+su historial y sus jobs pendientes o fallidos antes de reemplazar la columna `dni` por
+`documento`. Detén los workers Expertis antes de ejecutarla. No elimina gestiones, pagos
+ni jobs de otros procesos.
+
+Si las tablas Expertis ya existen y las migraciones anteriores están aplicadas, el comando
+nuevo de producción es:
 
 ```bash
-php artisan migrate --force --path=database/migrations/2026_07_26_000001_create_asignaciones_expertis_table.php
+php artisan migrate --force --path=database/migrations/2026_07_29_000001_replace_dni_with_documento_in_asignaciones_expertis_table.php
 ```
 
 Carga el catálogo idempotente:
@@ -180,9 +187,10 @@ Comprueba con un usuario autenticado:
 El rollback elimina datos Expertis. Antes de ejecutarlo, toma otro respaldo y detén importaciones. Revierte en orden inverso:
 
 ```bash
-php artisan migrate:rollback --force --path=database/migrations/2026_07_26_000001_create_asignaciones_expertis_table.php
+php artisan migrate:rollback --force --path=database/migrations/2026_07_29_000001_replace_dni_with_documento_in_asignaciones_expertis_table.php
 php artisan migrate:rollback --force --path=database/migrations/2026_07_27_000002_create_queue_tables.php
 php artisan migrate:rollback --force --path=database/migrations/2026_07_27_000001_add_queue_tracking_to_importaciones_expertis_table.php
+php artisan migrate:rollback --force --path=database/migrations/2026_07_26_000001_create_asignaciones_expertis_table.php
 php artisan migrate:rollback --force --path=database/migrations/2026_07_23_000005_create_errores_importacion_expertis_table.php
 php artisan migrate:rollback --force --path=database/migrations/2026_07_23_000004_create_pagos_expertis_table.php
 php artisan migrate:rollback --force --path=database/migrations/2026_07_23_000003_create_gestiones_expertis_table.php

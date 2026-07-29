@@ -177,6 +177,16 @@ function applyStatus(data) {
     }
 }
 
+function formatDate(value) {
+    if (!value) return '—';
+
+    const [year, month, day] = String(value)
+        .split('T')[0]
+        .split('-');
+
+    return `${day}/${month}/${year}`;
+}
+
 async function refreshStatus() {
     if (
         !selected.value
@@ -300,7 +310,7 @@ onBeforeUnmount(stopPolling);
             <template #cell-usuario="{ row }">{{ row.usuario?.name ?? 'Sistema' }}</template>
             <template #cell-estado="{ value }"><AppBadge :tone="tone(value)">{{ statusLabel(value) }}</AppBadge></template>
             <template #cell-periodo="{ row }">{{ row.resumen?.periodo ?? '—' }}</template>
-            <template #cell-rango="{ row }"><span class="text-xs">{{ row.fecha_minima ?? '—' }}<br>{{ row.fecha_maxima ?? '—' }}</span></template>
+            <template #cell-rango="{ row }"><span class="text-xs">{{ formatDate(row.fecha_minima) }}<br>{{ formatDate(row.fecha_maxima) ?? '—' }}</span></template>
             <template #cell-duracion="{ row }">{{ duration(row) }}</template>
             <template #cell-acciones="{ row }">
                 <div class="flex items-center gap-1">

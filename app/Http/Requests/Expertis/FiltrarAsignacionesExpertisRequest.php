@@ -15,6 +15,8 @@ class FiltrarAsignacionesExpertisRequest extends FormRequest
     {
         return [
             'periodo' => ['nullable', 'regex:/^\d{6}$/'],
+            'documento' => ['nullable', 'string', 'max:20'],
+            // Compatibilidad con enlaces y filtros anteriores.
             'dni' => ['nullable', 'string', 'max:20'],
             'codigo' => ['nullable', 'string', 'max:150'],
             'titular' => ['nullable', 'string', 'max:255'],

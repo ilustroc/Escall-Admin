@@ -17,7 +17,7 @@ class ExpertisSpreadsheetService
     public const ENCABEZADOS_ASIGNACIONES = [
         'PERIODO',
         'EMPRESA',
-        'DNI',
+        'DOCUMENTO',
         'TITULAR',
         'CODIGO',
         'TIPO DE CARTERA',
@@ -75,7 +75,8 @@ class ExpertisSpreadsheetService
     private const COLUMNAS_ASIGNACIONES = [
         'periodo' => 'periodo',
         'empresa' => 'empresa',
-        'dni' => 'dni',
+        'dni' => 'documento',
+        'documento' => 'documento',
         'titular' => 'titular',
         'codigo' => 'codigo',
         'tipo de cartera' => 'tipo_cartera',
@@ -116,7 +117,7 @@ class ExpertisSpreadsheetService
         self::ASIGNACIONES => [
             'periodo' => 'PERIODO',
             'empresa' => 'EMPRESA',
-            'dni' => 'DNI',
+            'documento' => 'DOCUMENTO',
             'titular' => 'TITULAR',
             'codigo' => 'CODIGO',
             'tipo_cartera' => 'TIPO DE CARTERA',
@@ -461,11 +462,16 @@ class ExpertisSpreadsheetService
 
     private function prepararAsignacionParaVistaPrevia(array $fila): array
     {
-        $dni = $this->normalizador->dni($fila['dni'] ?? null);
+        $documento = $this->normalizador->documento(
+            $fila['documento'] ?? $fila['dni'] ?? null,
+        );
         $tipoCartera = $this->normalizador->cartera($fila['tipo_cartera'] ?? null);
 
-        if ($dni !== '' && $tipoCartera !== '') {
-            $fila['codigo'] = $this->normalizador->codigoVisible($dni, $tipoCartera);
+        if ($documento !== '' && $tipoCartera !== '') {
+            $fila['codigo'] = $this->normalizador->codigoVisible(
+                $documento,
+                $tipoCartera,
+            );
         }
 
         return $fila;

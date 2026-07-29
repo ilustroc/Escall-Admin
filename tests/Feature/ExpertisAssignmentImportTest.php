@@ -89,7 +89,7 @@ class ExpertisAssignmentImportTest extends TestCase
     {
         $filas = [];
         for ($i = 1; $i <= 25; $i++) {
-            $filas[] = $this->fila(['dni' => str_pad((string) $i, 8, '0', STR_PAD_LEFT)]);
+            $filas[] = $this->fila(['documento' => str_pad((string) $i, 8, '0', STR_PAD_LEFT)]);
         }
 
         $preview = $this->preview($this->crearXlsx($filas));
@@ -123,9 +123,9 @@ class ExpertisAssignmentImportTest extends TestCase
     {
         $filas = [];
         for ($i = 1; $i <= 24; $i++) {
-            $filas[] = $this->fila(['dni' => str_pad((string) $i, 8, '0', STR_PAD_LEFT)]);
+            $filas[] = $this->fila(['documento' => str_pad((string) $i, 8, '0', STR_PAD_LEFT)]);
         }
-        $filas[] = $this->fila(['periodo' => '202608', 'dni' => '00000025']);
+        $filas[] = $this->fila(['periodo' => '202608', 'documento' => '00000025']);
 
         $this->preview($this->crearXlsx($filas))
             ->assertOk()
@@ -150,7 +150,7 @@ class ExpertisAssignmentImportTest extends TestCase
         $this->assertDatabaseCount('asignaciones_expertis', 1);
         $asignacion = AsignacionExpertis::firstOrFail();
         $this->assertSame('202607', $asignacion->periodo);
-        $this->assertSame('00000001', $asignacion->dni);
+        $this->assertSame('00000001', $asignacion->documento);
         $this->assertSame('00000001-LOS ANDES', $asignacion->codigo);
         $this->assertSame('2994.71', $asignacion->deuda_total);
         $this->assertNull($asignacion->sub_cosecha);
@@ -181,7 +181,50 @@ class ExpertisAssignmentImportTest extends TestCase
         $this->assertSame(1, $importacion->filas_error);
         $this->assertDatabaseHas('errores_importacion_expertis', [
             'importacion_expertis_id' => $importacion->id,
-            'mensaje' => 'El código no coincide con el DNI y el tipo de cartera para Expertis.',
+            'mensaje' => 'El código no coincide con el documento y el tipo de cartera para Expertis.',
+        ]);
+    }
+
+    public function test_importa_dni_ruc_y_carnet_de_extranjeria_como_documentos(): void
+    {
+        $importacion = $this->importar($this->crearXlsx([
+            $this->fila(),
+            $this->fila([
+                'documento' => '20123456789',
+                'codigo' => '20123456789-PRO',
+                'tipo_cartera' => 'PRO',
+            ]),
+            $this->fila([
+                'documento' => 'CE000003',
+                'codigo' => 'CE000003-CREDINKA',
+                'tipo_cartera' => 'CREDINKA',
+            ]),
+        ]));
+
+        $this->assertSame(3, $importacion->filas_insertadas);
+        $this->assertDatabaseHas('asignaciones_expertis', [
+            'documento' => '20123456789',
+            'codigo' => '20123456789-PRO',
+        ]);
+        $this->assertDatabaseHas('asignaciones_expertis', [
+            'documento' => 'CE000003',
+            'codigo_normalizado' => 'CE000003-CREDINKA',
+        ]);
+    }
+
+    public function test_encabezado_dni_anterior_sigue_siendo_compatible(): void
+    {
+        $headers = ExpertisSpreadsheetService::ENCABEZADOS_ASIGNACIONES;
+        $headers[2] = 'DNI';
+
+        $importacion = $this->importar($this->crearXlsx(
+            [$this->fila()],
+            $headers,
+        ));
+
+        $this->assertSame(1, $importacion->filas_insertadas);
+        $this->assertDatabaseHas('asignaciones_expertis', [
+            'documento' => '00000001',
         ]);
     }
 
@@ -225,7 +268,7 @@ class ExpertisAssignmentImportTest extends TestCase
     {
         $this->importar($this->crearXlsx([
             $this->fila(),
-            $this->fila(['dni' => '00000002']),
+            $this->fila(['documento' => '00000002']),
         ]));
         $segunda = $this->importar($this->crearXlsx([
             $this->fila(['deuda_total' => 3500]),
@@ -235,9 +278,9 @@ class ExpertisAssignmentImportTest extends TestCase
         $this->assertSame(1, $segunda->filas_actualizadas);
         $this->assertSame(
             '3500.00',
-            AsignacionExpertis::where('dni', '00000001')->firstOrFail()->deuda_total,
+            AsignacionExpertis::where('documento', '00000001')->firstOrFail()->deuda_total,
         );
-        $this->assertDatabaseHas('asignaciones_expertis', ['dni' => '00000002']);
+        $this->assertDatabaseHas('asignaciones_expertis', ['documento' => '00000002']);
     }
 
     public function test_mismo_codigo_en_periodos_diferentes_inserta_dos_registros(): void
@@ -257,7 +300,7 @@ class ExpertisAssignmentImportTest extends TestCase
         config(['expertis.chunk_size' => 2]);
         $filas = [];
         for ($i = 1; $i <= 5; $i++) {
-            $filas[] = $this->fila(['dni' => str_pad((string) $i, 8, '0', STR_PAD_LEFT)]);
+            $filas[] = $this->fila(['documento' => str_pad((string) $i, 8, '0', STR_PAD_LEFT)]);
         }
 
         $importacion = $this->importar($this->crearXlsx($filas));
@@ -273,8 +316,8 @@ class ExpertisAssignmentImportTest extends TestCase
         config(['expertis.chunk_size' => 2]);
         $importacion = $this->importar($this->crearXlsx([
             $this->fila(['sexo' => 'X']),
-            $this->fila(['dni' => '00000002', 'deuda_capital' => '-']),
-            $this->fila(['dni' => '00000003']),
+            $this->fila(['documento' => '00000002', 'deuda_capital' => '-']),
+            $this->fila(['documento' => '00000003']),
         ]));
 
         $this->assertSame(3, $importacion->total_filas);
@@ -338,7 +381,8 @@ class ExpertisAssignmentImportTest extends TestCase
         $this->assertSame(ExpertisSpreadsheetService::ENCABEZADOS_ASIGNACIONES, $filas[0]);
         $this->assertCount(4, $filas);
         $this->assertSame('00000001', $filas[1][2]);
-        $this->assertSame('00000003', $filas[3][2]);
+        $this->assertSame('20123456789', $filas[2][2]);
+        $this->assertSame('CE000003', $filas[3][2]);
     }
 
     public function test_historial_reconoce_y_filtra_asignaciones(): void
@@ -383,7 +427,29 @@ class ExpertisAssignmentImportTest extends TestCase
                 ->has('asignaciones.data', 1));
     }
 
-    public function test_exportacion_xlsx_conserva_dni_codigo_y_montos(): void
+    public function test_listado_filtra_por_documento(): void
+    {
+        $this->importar($this->crearXlsx([
+            $this->fila(),
+            $this->fila([
+                'documento' => '20123456789',
+                'codigo' => '20123456789-PRO',
+                'tipo_cartera' => 'PRO',
+            ]),
+        ]));
+
+        $this->actingAs($this->usuario)
+            ->get('/expertis/asignaciones?periodo=202607&documento=20123456789')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filtros.documento', '20123456789')
+                ->where(
+                    'asignaciones.data.0.documento',
+                    '20123456789',
+                )
+                ->has('asignaciones.data', 1));
+    }
+
+    public function test_exportacion_xlsx_conserva_documento_codigo_y_montos(): void
     {
         $this->importar($this->crearXlsx([$this->fila()]));
 
@@ -476,7 +542,7 @@ class ExpertisAssignmentImportTest extends TestCase
         return array_values(array_merge([
             'periodo' => '202607',
             'empresa' => 'EXPERTIS',
-            'dni' => '00000001',
+            'documento' => '00000001',
             'titular' => 'CLIENTE FICTICIO',
             'codigo' => '',
             'tipo_cartera' => 'LOS ANDES',

@@ -27,9 +27,15 @@ class AsignacionExpertisDataMapper
             );
         }
 
-        $dni = $this->normalizador->dni($fila['dni'] ?? null);
-        if (! preg_match('/^\d{8}$/', $dni)) {
-            throw new InvalidArgumentException('El DNI debe contener exactamente ocho dígitos.');
+        $documento = $this->normalizador->documento(
+            $fila['documento'] ?? $fila['dni'] ?? null,
+        );
+        if (
+            ! preg_match('/^[A-Z0-9]{6,20}$/', $documento)
+        ) {
+            throw new InvalidArgumentException(
+                'El documento debe contener entre 6 y 20 caracteres alfanuméricos.',
+            );
         }
 
         $titular = $this->normalizador->textoLibre($fila['titular'] ?? null, 255);
@@ -43,7 +49,10 @@ class AsignacionExpertisDataMapper
         }
         $tipoCartera = mb_substr($tipoCartera, 0, 100);
 
-        $codigo = $this->normalizador->codigoVisible($dni, $tipoCartera);
+        $codigo = $this->normalizador->codigoVisible(
+            $documento,
+            $tipoCartera,
+        );
         $codigoNormalizado = $this->normalizador->codigoNormalizado($codigo);
         $codigoEnviado = $this->textoOpcional($fila['codigo'] ?? null, 150);
         if (
@@ -51,7 +60,7 @@ class AsignacionExpertisDataMapper
             && $this->normalizador->codigoNormalizado($codigoEnviado) !== $codigoNormalizado
         ) {
             throw new InvalidArgumentException(
-                'El código no coincide con el DNI y el tipo de cartera para Expertis.',
+                'El código no coincide con el documento y el tipo de cartera para Expertis.',
             );
         }
 
@@ -77,7 +86,7 @@ class AsignacionExpertisDataMapper
             'importacion_expertis_id' => $importacionId,
             'periodo' => $periodo,
             'empresa' => $empresa,
-            'dni' => $dni,
+            'documento' => $documento,
             'titular' => $titular,
             'codigo' => $codigo,
             'codigo_normalizado' => $codigoNormalizado,

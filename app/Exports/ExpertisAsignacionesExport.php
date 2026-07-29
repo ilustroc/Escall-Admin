@@ -33,7 +33,7 @@ class ExpertisAsignacionesExport
             $writer->addRow(Row::fromValues([
                 'PERIODO',
                 'EMPRESA',
-                'DNI',
+                'DOCUMENTO',
                 'TITULAR',
                 'CODIGO',
                 'TIPO DE CARTERA',
@@ -63,7 +63,7 @@ class ExpertisAsignacionesExport
                 $writer->addRow(Row::fromValues([
                     (string) $fila->periodo,
                     $fila->empresa,
-                    (string) $fila->dni,
+                    (string) $fila->documento,
                     $fila->titular,
                     (string) $fila->codigo,
                     $fila->tipo_cartera,

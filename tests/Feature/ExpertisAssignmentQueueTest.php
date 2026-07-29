@@ -98,11 +98,11 @@ class ExpertisAssignmentQueueTest extends TestCase
         $rows = [];
         for ($i = 1; $i <= 22; $i++) {
             $rows[] = $this->row([
-                'dni' => str_pad((string) $i, 8, '0', STR_PAD_LEFT),
+                'documento' => str_pad((string) $i, 8, '0', STR_PAD_LEFT),
             ]);
         }
         $rows[] = $this->row([
-            'dni' => '00000023',
+            'documento' => '00000023',
             'anio_laboral' => 5,
         ]);
         $import = $this->prepare($this->createXlsx($rows));
@@ -131,8 +131,8 @@ class ExpertisAssignmentQueueTest extends TestCase
     {
         $import = $this->prepare($this->createXlsx([
             $this->row(),
-            $this->row(['dni' => '00000002']),
-            $this->row(['dni' => '00000003']),
+            $this->row(['documento' => '00000002']),
+            $this->row(['documento' => '00000003']),
         ]));
         Storage::disk('local')->delete($import->ruta_archivo);
 
@@ -284,8 +284,8 @@ class ExpertisAssignmentQueueTest extends TestCase
     {
         $import = $this->prepare($this->createXlsx([
             $this->row(),
-            $this->row(['dni' => '00000002']),
-            $this->row(['dni' => '00000003']),
+            $this->row(['documento' => '00000002']),
+            $this->row(['documento' => '00000003']),
         ]));
         $chunks = app(AsignacionExpertisPreparationService::class)
             ->chunks($import);
@@ -382,7 +382,7 @@ class ExpertisAssignmentQueueTest extends TestCase
             'finalizado_at' => now(),
         ]);
         $failed = $this->prepare($this->createXlsx([
-            $this->row(['dni' => '00000002']),
+            $this->row(['documento' => '00000002']),
         ]));
         $failed->update([
             'estado' => ImportacionExpertis::ESTADO_FALLIDO,
@@ -466,7 +466,7 @@ class ExpertisAssignmentQueueTest extends TestCase
         return array_values(array_merge([
             'periodo' => '202607',
             'empresa' => 'EXPERTIS',
-            'dni' => '00000001',
+            'documento' => '00000001',
             'titular' => 'CLIENTE FICTICIO',
             'codigo' => '',
             'tipo_cartera' => 'LOS ANDES',
