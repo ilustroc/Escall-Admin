@@ -24,7 +24,6 @@ class LegacyModulesFunctionalTest extends TestCase
         $this->post('/login', [
             'email' => $user->email,
             'password' => 'secret123',
-            'remember' => true,
         ])->assertRedirect('/');
         $this->assertAuthenticatedAs($user);
 

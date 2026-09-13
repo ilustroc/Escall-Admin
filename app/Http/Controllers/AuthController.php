@@ -23,7 +23,7 @@ class AuthController extends Controller
 
     public function doLogin(LoginRequest $request, AuthService $auth): RedirectResponse
     {
-        if ($auth->attempt($request->credentials(), $request->boolean('remember'), $request)) {
+        if ($auth->attempt($request->credentials(), $request)) {
             return redirect()->intended(route('dashboard'));
         }
 

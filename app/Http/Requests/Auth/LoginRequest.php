@@ -16,8 +16,24 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'not_regex:/[\r\n]/', 'email'],
             'password' => ['required', 'string'],
-            'remember' => ['nullable', 'boolean'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $email = $this->input('email');
+
+        if (
+            ! is_string($email)
+            || str_contains($email, "\r")
+            || str_contains($email, "\n")
+        ) {
+            return;
+        }
+
+        $this->merge([
+            'email' => mb_strtolower(trim($email), 'UTF-8'),
+        ]);
     }
 
     public function messages(): array
