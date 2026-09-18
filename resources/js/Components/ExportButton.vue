@@ -4,4 +4,4 @@ import AppButton from './AppButton.vue';
 defineProps({ href: { type: String, required: true }, label: { type: String, default: 'Exportar' } });
 </script>
 
-<template><AppButton :href="href" variant="secondary"><ArrowDownTrayIcon class="h-4 w-4" />{{ label }}</AppButton></template>
+<template><AppButton :href="href" :download="true" variant="secondary"><ArrowDownTrayIcon class="h-4 w-4" />{{ label }}</AppButton></template>

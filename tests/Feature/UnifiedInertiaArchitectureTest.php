@@ -78,6 +78,13 @@ class UnifiedInertiaArchitectureTest extends TestCase
         $this->assertStringNotContainsString('inertiaRoot', $source);
     }
 
+    public function test_export_button_uses_a_native_download_link(): void
+    {
+        $source = file_get_contents(resource_path('js/Components/ExportButton.vue'));
+
+        $this->assertStringContainsString(':download="true"', $source);
+    }
+
     public static function screenRoutes(): array
     {
         return [
