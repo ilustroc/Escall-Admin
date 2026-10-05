@@ -25,10 +25,46 @@ class ExpertisLlamadasReportTest extends TestCase
             'empresa' => 'ESCALL',
             'documento' => '43115307',
             'titular' => 'CLIENTE ENRIQUECIDO',
+            'codigo' => '43115307-SEPTIEMBRE',
+            'codigo_normalizado' => '43115307-SEPTIEMBRE',
+            'tipo_cartera' => 'OH',
+            'hash_fila' => hash('sha256', 'assignment'),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('asignaciones_expertis')->insert([
+            'periodo' => '202607',
+            'empresa' => 'ESCALL',
+            'documento' => '43115307',
+            'titular' => 'CLIENTE JULIO',
+            'codigo' => '43115307-JULIO',
+            'codigo_normalizado' => '43115307-JULIO',
+            'tipo_cartera' => 'OH',
+            'hash_fila' => hash('sha256', 'assignment-july'),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('asignaciones_expertis')->insert([
+            'periodo' => '202609',
+            'empresa' => 'ESCALL',
+            'documento' => '43115307',
+            'titular' => 'CLIENTE SEPTIEMBRE RECIENTE',
             'codigo' => '43115307-OH',
             'codigo_normalizado' => '43115307-OH',
             'tipo_cartera' => 'OH',
-            'hash_fila' => hash('sha256', 'assignment'),
+            'hash_fila' => hash('sha256', 'assignment-september-newer'),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('asignaciones_expertis')->insert([
+            'periodo' => '202607',
+            'empresa' => 'ESCALL',
+            'documento' => '99999999',
+            'titular' => 'CLIENTE SOLO JULIO',
+            'codigo' => '99999999-JULIO',
+            'codigo_normalizado' => '99999999-JULIO',
+            'tipo_cartera' => 'OH',
+            'hash_fila' => hash('sha256', 'assignment-only-july'),
             'created_at' => $now,
             'updated_at' => $now,
         ]);
@@ -58,21 +94,40 @@ class ExpertisLlamadasReportTest extends TestCase
             'observacion' => 'BUZON',
             'usuario' => null,
         ]);
+        DB::table('llamadas')->insert([
+            'fecha_gestion' => '2026-09-02 09:00:00',
+            'documento' => '99999999',
+            'cliente' => 'CLIENTE DEL DISCADOR',
+            'cartera' => 'SIN ASIGNACION',
+            'resultado' => 'NO CONTESTA',
+            'tipo_gestion' => 'NO CONTACTO',
+        ]);
 
-        $rows = app(ExpertisReportQuery::class)->gestiones([
+        $reportes = app(ExpertisReportQuery::class);
+        $filtros = [
             'fecha_inicio' => '2026-09-02',
             'fecha_fin' => '2026-09-02',
-        ], false)->get()->keyBy('origen');
+        ];
+        $rows = $reportes->gestiones($filtros, false)->get();
+        $manual = $rows->firstWhere('origen', 'MANUAL');
+        $discadorAsignado = $rows->firstWhere('dni', '43115307');
+        $discadorSinAsignacion = $rows->firstWhere('dni', '99999999');
 
-        $this->assertCount(2, $rows);
-        $this->assertSame('MANUAL', $rows['MANUAL']->medio_gestion);
-        $this->assertSame('DISCADOR', $rows['DISCADOR']->medio_gestion);
-        $this->assertSame('43115307', $rows['DISCADOR']->dni);
-        $this->assertSame('43115307-OH', $rows['DISCADOR']->codigo_normalizado);
-        $this->assertSame('CLIENTE ENRIQUECIDO', $rows['DISCADOR']->nombre_cliente);
-        $this->assertSame('MARCADOR', $rows['DISCADOR']->asesor);
-        $this->assertSame('KATHERINE HUAMAN', $rows['DISCADOR']->equipo);
-        $this->assertNull($rows['DISCADOR']->peso);
+        $this->assertCount(3, $rows);
+        $this->assertSame('MANUAL', $manual->medio_gestion);
+        $this->assertSame('DISCADOR', $discadorAsignado->medio_gestion);
+        $this->assertSame('43115307', $discadorAsignado->dni);
+        $this->assertSame('43115307-SEPTIEMBRE', $discadorAsignado->codigo_normalizado);
+        $this->assertSame('CLIENTE SEPTIEMBRE RECIENTE', $discadorAsignado->nombre_cliente);
+        $this->assertSame('MARCADOR', $discadorAsignado->asesor);
+        $this->assertSame('KATHERINE HUAMAN', $discadorAsignado->equipo);
+        $this->assertNull($discadorAsignado->peso);
+        $this->assertSame('99999999', $discadorSinAsignacion->codigo_normalizado);
+        $this->assertSame('CLIENTE DEL DISCADOR', $discadorSinAsignacion->nombre_cliente);
+        $this->assertSame('DISCADOR', $discadorSinAsignacion->medio_gestion);
+        $this->assertCount(1, $reportes->gestiones(array_merge($filtros, ['medio_gestion' => 'MANUAL']), false)->get());
+        $this->assertCount(2, $reportes->gestiones(array_merge($filtros, ['medio_gestion' => 'DISCADOR']), false)->get());
+        $this->assertSame(3, $reportes->resumenGestiones($filtros)['totales']['total_gestiones']);
         $this->assertSame(500, (new ExpertisGestionesExport([]))->chunkSize());
     }
 

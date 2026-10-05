@@ -355,10 +355,13 @@ class ExpertisReportQuery
         $driver = DB::connection()->getDriverName();
         $manualKey = $driver === 'mysql' ? "CONCAT('MANUAL:', ge.id)" : "'MANUAL:' || ge.id";
         $dialerKey = $driver === 'mysql' ? "CONCAT('DISCADOR:', ll.id)" : "'DISCADOR:' || ll.id";
+        $periodoManual = $driver === 'mysql' ? "DATE_FORMAT(ge.fecha_hora, '%Y%m')" : "STRFTIME('%Y%m', ge.fecha_hora)";
+        $periodoDiscador = $driver === 'mysql' ? "DATE_FORMAT(ll.fecha_gestion, '%Y%m')" : "STRFTIME('%Y%m', ll.fecha_gestion)";
 
         $manual = DB::table('gestiones_expertis as ge')
-            ->leftJoinSub($assignments, 'ae', function ($join): void {
-                $join->on('ae.documento', '=', DB::raw('TRIM(ge.dni)'));
+            ->leftJoinSub($assignments, 'ae', function ($join) use ($periodoManual): void {
+                $join->on('ae.documento', '=', DB::raw('TRIM(ge.dni)'))
+                    ->on('ae.periodo', '=', DB::raw($periodoManual));
             })
             ->selectRaw("ge.id as id, ge.id as id_gestion, 'MANUAL' as origen, {$manualKey} as registro_key")
             ->selectRaw("COALESCE(NULLIF(ge.codigo, ''), ae.codigo, TRIM(ge.dni)) as codigo")
@@ -375,8 +378,9 @@ class ExpertisReportQuery
             ->selectRaw("'MANUAL' as medio_gestion");
 
         $llamadas = DB::table('llamadas as ll')
-            ->leftJoinSub($this->ultimaAsignacionPorDocumento(), 'ae', function ($join): void {
-                $join->on('ae.documento', '=', DB::raw('TRIM(ll.documento)'));
+            ->leftJoinSub($assignments, 'ae', function ($join) use ($periodoDiscador): void {
+                $join->on('ae.documento', '=', DB::raw('TRIM(ll.documento)'))
+                    ->on('ae.periodo', '=', DB::raw($periodoDiscador));
             })
             ->selectRaw("ll.id as id, ll.id as id_gestion, 'DISCADOR' as origen, {$dialerKey} as registro_key")
             ->selectRaw("COALESCE(NULLIF(ae.codigo, ''), TRIM(ll.documento)) as codigo")
@@ -406,12 +410,13 @@ class ExpertisReportQuery
     private function ultimaAsignacionPorDocumento(): Builder
     {
         return DB::table('asignaciones_expertis as ae')
-            ->select('ae.documento', 'ae.codigo', 'ae.codigo_normalizado', 'ae.titular')
+            ->select('ae.documento', 'ae.periodo', 'ae.codigo', 'ae.codigo_normalizado', 'ae.titular')
             ->whereRaw('ae.id = (
                 SELECT ae2.id
                 FROM asignaciones_expertis as ae2
                 WHERE ae2.documento = ae.documento
-                ORDER BY ae2.periodo DESC, ae2.id DESC
+                  AND ae2.periodo = ae.periodo
+                ORDER BY ae2.id DESC
                 LIMIT 1
             )');
     }
