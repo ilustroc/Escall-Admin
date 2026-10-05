@@ -96,7 +96,6 @@ abstract class TestCase extends BaseTestCase
             $table->string('tipo_gestion', 150)->nullable()->index();
             $table->text('observacion')->nullable();
             $table->string('usuario', 100)->nullable();
-            $table->timestamps();
         });
 
         Schema::create('pagos', function (Blueprint $table): void {

@@ -148,8 +148,6 @@ class LlamadasSpSyncTest extends TestCase
         return [
             'fecha_gestion' => $fecha,
             'documento' => $documento,
-            'created_at' => now(),
-            'updated_at' => now(),
         ];
     }
 }

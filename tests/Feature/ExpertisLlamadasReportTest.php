@@ -57,8 +57,6 @@ class ExpertisLlamadasReportTest extends TestCase
             'tipo_gestion' => 'NO CONTACTO',
             'observacion' => 'BUZON',
             'usuario' => null,
-            'created_at' => $now,
-            'updated_at' => $now,
         ]);
 
         $rows = app(ExpertisReportQuery::class)->gestiones([
@@ -80,13 +78,10 @@ class ExpertisLlamadasReportTest extends TestCase
 
     public function test_report_uses_an_exclusive_end_date_for_dialer_rows(): void
     {
-        $now = now();
         foreach (['2026-09-02 00:00:00', '2026-09-02 23:59:59', '2026-09-03 00:00:00'] as $index => $fecha) {
             DB::table('llamadas')->insert([
                 'fecha_gestion' => $fecha,
                 'documento' => 'doc-'.$index,
-                'created_at' => $now,
-                'updated_at' => $now,
             ]);
         }
 

@@ -75,7 +75,6 @@ class LlamadasSpService
                         ->delete();
 
                     $batch = [];
-                    $now = now()->toDateTimeString();
 
                     foreach ($this->streamRows($fromDate->format('Y-m-d H:i:s'), $toDate->format('Y-m-d H:i:s')) as $row) {
                         $stats['obtenidos']++;
@@ -91,10 +90,7 @@ class LlamadasSpService
                             $stats['muestra'][] = $mapped;
                         }
 
-                        $batch[] = array_merge($mapped, [
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ]);
+                        $batch[] = $mapped;
 
                         if (count($batch) >= self::BATCH_SIZE) {
                             DB::table('llamadas')->insert($batch);

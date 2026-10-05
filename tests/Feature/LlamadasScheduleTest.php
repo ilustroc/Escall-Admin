@@ -59,8 +59,6 @@ class LlamadasScheduleTest extends TestCase
             'documento' => '43115307',
             'resultado' => 'BUZON',
             'tipo_gestion' => 'NO CONTACTO',
-            'created_at' => $now,
-            'updated_at' => $now,
         ]);
 
         $rows = app(ReporteImpulseQuery::class)->builder('2026-09-02', '2026-09-02', 2)->get();
