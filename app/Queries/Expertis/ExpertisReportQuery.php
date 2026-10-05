@@ -2,6 +2,7 @@
 
 namespace App\Queries\Expertis;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -9,29 +10,33 @@ class ExpertisReportQuery
 {
     public function gestiones(array $filtros = [], bool $ordenar = true): Builder
     {
-        $ranking = DB::table('gestiones_expertis as ge')
-            ->leftJoin('tipificaciones_expertis as te', 'te.id', '=', 'ge.tipificacion_expertis_id')
+        $ranking = DB::query()
+            ->fromSub($this->fuentesGestiones(), 'ge')
+            // A discador result may not exist in this catalog. LEFT JOIN keeps
+            // it in the report with peso/categoria null instead of failing.
+            ->leftJoin('tipificaciones_expertis as te', 'te.tipificacion', '=', 'ge.nivel_2')
             ->select('ge.*', 'te.peso', 'te.gestion as categoria_gestion')
             ->selectRaw(
                 'ROW_NUMBER() OVER (
                     PARTITION BY ge.codigo_normalizado
-                    ORDER BY COALESCE(te.peso, 999999) ASC, ge.fecha_hora DESC, ge.id DESC
+                    ORDER BY COALESCE(te.peso, 999999) ASC, ge.fecha_hora DESC, ge.registro_key DESC
                 ) as ranking_unico',
             );
 
-        $pagos = DB::table('gestiones_expertis as gp')
+        $pagos = DB::query()
+            ->fromSub($this->fuentesGestiones(), 'gp')
             ->leftJoin('pagos_expertis as pp', function ($join): void {
                 $join->on('pp.cuenta_normalizada', '=', 'gp.codigo_normalizado')
                     ->whereColumn('pp.fecha', '>=', 'gp.fecha_llamada');
             })
-            ->select('gp.id as gestion_id')
+            ->select('gp.registro_key')
             ->selectRaw('MIN(pp.fecha) as fecha_pagada')
             ->selectRaw('COALESCE(SUM(pp.monto), 0) as monto_pagado')
-            ->groupBy('gp.id');
+            ->groupBy('gp.registro_key');
 
         $query = DB::query()
             ->fromSub($ranking, 'r')
-            ->leftJoinSub($pagos, 'pag', 'pag.gestion_id', '=', 'r.id')
+            ->leftJoinSub($pagos, 'pag', 'pag.registro_key', '=', 'r.registro_key')
             ->select('r.*', 'pag.fecha_pagada')
             ->selectRaw('COALESCE(pag.monto_pagado, 0) as monto_pagado')
             ->selectRaw("CASE WHEN COALESCE(pag.monto_pagado, 0) > 0 THEN 'PAGO' ELSE 'NO PAGO' END as estado")
@@ -206,6 +211,18 @@ class ExpertisReportQuery
 
     public function opcionesFiltros(): array
     {
+        $distintosGestiones = function (string $columna): array {
+            return DB::query()
+                ->fromSub($this->fuentesGestiones(), 'g')
+                ->whereNotNull($columna)
+                ->where($columna, '<>', '')
+                ->distinct()
+                ->orderBy($columna)
+                ->limit(250)
+                ->pluck($columna)
+                ->all();
+        };
+
         $distintos = function (string $tabla, string $columna): array {
             return DB::table($tabla)
                 ->whereNotNull($columna)
@@ -218,13 +235,13 @@ class ExpertisReportQuery
         };
 
         return [
-            'carteras' => $distintos('gestiones_expertis', 'cartera'),
-            'asesores' => $distintos('gestiones_expertis', 'asesor'),
-            'equipos' => $distintos('gestiones_expertis', 'equipo'),
-            'niveles_1' => $distintos('gestiones_expertis', 'nivel_1'),
-            'niveles_2' => $distintos('gestiones_expertis', 'nivel_2'),
-            'campanias' => $distintos('gestiones_expertis', 'campania'),
-            'medios' => $distintos('gestiones_expertis', 'medio_gestion'),
+            'carteras' => $distintosGestiones('cartera'),
+            'asesores' => $distintosGestiones('asesor'),
+            'equipos' => $distintosGestiones('equipo'),
+            'niveles_1' => $distintosGestiones('nivel_1'),
+            'niveles_2' => $distintosGestiones('nivel_2'),
+            'campanias' => $distintosGestiones('campania'),
+            'medios' => $distintosGestiones('medio_gestion'),
             'ejecutivos' => $distintos('pagos_expertis', 'ejecutivo'),
             'tipos_acuerdo' => $distintos('pagos_expertis', 'tipo_acuerdo'),
             'recaudos' => $distintos('pagos_expertis', 'recaudo'),
@@ -234,8 +251,6 @@ class ExpertisReportQuery
     private function aplicarFiltrosGestiones(Builder $query, array $filtros): void
     {
         $query
-            ->when($filtros['fecha_inicio'] ?? null, fn ($q, $v) => $q->where('r.fecha_llamada', '>=', $v))
-            ->when($filtros['fecha_fin'] ?? null, fn ($q, $v) => $q->where('r.fecha_llamada', '<=', $v))
             ->when($filtros['codigo'] ?? null, fn ($q, $v) => $q->where('r.codigo', 'like', '%'.$v.'%'))
             ->when($filtros['dni'] ?? null, fn ($q, $v) => $q->where('r.dni', 'like', '%'.$v.'%'))
             ->when($filtros['cartera'] ?? null, fn ($q, $v) => $q->where('r.cartera', $v))
@@ -246,6 +261,14 @@ class ExpertisReportQuery
             ->when($filtros['peso'] ?? null, fn ($q, $v) => $q->where('r.peso', $v))
             ->when($filtros['campania'] ?? null, fn ($q, $v) => $q->where('r.campania', $v))
             ->when($filtros['medio_gestion'] ?? null, fn ($q, $v) => $q->where('r.medio_gestion', $v));
+
+        if ($from = $filtros['fecha_inicio'] ?? null) {
+            $query->where('r.fecha_hora', '>=', CarbonImmutable::parse($from, 'America/Lima')->startOfDay()->format('Y-m-d H:i:s'));
+        }
+
+        if ($to = $filtros['fecha_fin'] ?? null) {
+            $query->where('r.fecha_hora', '<', CarbonImmutable::parse($to, 'America/Lima')->startOfDay()->addDay()->format('Y-m-d H:i:s'));
+        }
 
         if (($filtros['estado'] ?? '') === 'PAGO') {
             $query->whereRaw('COALESCE(pag.monto_pagado, 0) > 0');
@@ -324,5 +347,72 @@ class ExpertisReportQuery
             )
             ELSE 0
         END";
+    }
+
+    private function fuentesGestiones(): Builder
+    {
+        $assignments = $this->ultimaAsignacionPorDocumento();
+        $driver = DB::connection()->getDriverName();
+        $manualKey = $driver === 'mysql' ? "CONCAT('MANUAL:', ge.id)" : "'MANUAL:' || ge.id";
+        $dialerKey = $driver === 'mysql' ? "CONCAT('DISCADOR:', ll.id)" : "'DISCADOR:' || ll.id";
+
+        $manual = DB::table('gestiones_expertis as ge')
+            ->leftJoinSub($assignments, 'ae', function ($join): void {
+                $join->on('ae.documento', '=', DB::raw('TRIM(ge.dni)'));
+            })
+            ->selectRaw("ge.id as id, ge.id as id_gestion, 'MANUAL' as origen, {$manualKey} as registro_key")
+            ->selectRaw("COALESCE(NULLIF(ge.codigo, ''), ae.codigo, TRIM(ge.dni)) as codigo")
+            ->selectRaw("COALESCE(NULLIF(ge.codigo_normalizado, ''), ae.codigo_normalizado, TRIM(ge.dni)) as codigo_normalizado")
+            ->selectRaw("COALESCE(NULLIF(ge.canal_gestion, ''), 'ESCALL') as canal_gestion")
+            ->selectRaw("COALESCE(NULLIF(ge.canal_asignacion, ''), 'ESCALL') as canal_asignacion")
+            ->selectRaw('TRIM(ge.dni) as dni')
+            ->selectRaw("COALESCE(NULLIF(ge.nombre_cliente, ''), ae.titular) as nombre_cliente")
+            ->select([
+                'ge.cartera', 'ge.asesor', 'ge.equipo', 'ge.telefono',
+                'ge.fecha_llamada', 'ge.hora', 'ge.fecha_hora', 'ge.campania',
+                'ge.nivel_1', 'ge.nivel_2', 'ge.fecha_compromiso', 'ge.monto', 'ge.observacion',
+            ])
+            ->selectRaw("'MANUAL' as medio_gestion");
+
+        $llamadas = DB::table('llamadas as ll')
+            ->leftJoinSub($this->ultimaAsignacionPorDocumento(), 'ae', function ($join): void {
+                $join->on('ae.documento', '=', DB::raw('TRIM(ll.documento)'));
+            })
+            ->selectRaw("ll.id as id, ll.id as id_gestion, 'DISCADOR' as origen, {$dialerKey} as registro_key")
+            ->selectRaw("COALESCE(NULLIF(ae.codigo, ''), TRIM(ll.documento)) as codigo")
+            ->selectRaw("COALESCE(NULLIF(ae.codigo_normalizado, ''), TRIM(ll.documento)) as codigo_normalizado")
+            ->selectRaw("'ESCALL' as canal_gestion, 'ESCALL' as canal_asignacion")
+            ->selectRaw('TRIM(ll.documento) as dni')
+            ->selectRaw("COALESCE(NULLIF(ll.cliente, ''), ae.titular) as nombre_cliente")
+            ->select([
+                'll.cartera',
+            ])
+            ->selectRaw("UPPER(COALESCE(NULLIF(TRIM(ll.usuario), ''), 'MARCADOR')) as asesor")
+            ->selectRaw("'KATHERINE HUAMAN' as equipo")
+            ->selectRaw('ll.telefono as telefono')
+            ->selectRaw('DATE(ll.fecha_gestion) as fecha_llamada')
+            ->selectRaw('TIME(ll.fecha_gestion) as hora')
+            ->selectRaw('ll.fecha_gestion as fecha_hora')
+            ->selectRaw('ll.campana as campania')
+            ->selectRaw('ll.resultado as nivel_1')
+            ->selectRaw('ll.tipo_gestion as nivel_2')
+            ->selectRaw('NULL as fecha_compromiso, 0 as monto')
+            ->selectRaw('ll.observacion as observacion')
+            ->selectRaw("'DISCADOR' as medio_gestion");
+
+        return $manual->unionAll($llamadas);
+    }
+
+    private function ultimaAsignacionPorDocumento(): Builder
+    {
+        return DB::table('asignaciones_expertis as ae')
+            ->select('ae.documento', 'ae.codigo', 'ae.codigo_normalizado', 'ae.titular')
+            ->whereRaw('ae.id = (
+                SELECT ae2.id
+                FROM asignaciones_expertis as ae2
+                WHERE ae2.documento = ae.documento
+                ORDER BY ae2.periodo DESC, ae2.id DESC
+                LIMIT 1
+            )');
     }
 }

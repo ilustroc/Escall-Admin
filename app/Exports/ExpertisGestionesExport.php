@@ -78,6 +78,6 @@ class ExpertisGestionesExport implements FromQuery, WithCustomChunkSize, WithHea
 
     public function chunkSize(): int
     {
-        return (int) config('expertis.chunk_size', 1000);
+        return 500;
     }
 }

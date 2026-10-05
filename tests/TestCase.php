@@ -79,6 +79,26 @@ abstract class TestCase extends BaseTestCase
             $table->timestamps();
         });
 
+        Schema::create('llamadas', function (Blueprint $table): void {
+            $table->id();
+            $table->dateTime('fecha_gestion')->nullable()->index();
+            $table->dateTime('fecha_inicio')->nullable();
+            $table->dateTime('fecha_final')->nullable();
+            $table->string('documento', 30)->nullable()->index();
+            $table->text('cuenta')->nullable();
+            $table->string('telefono', 30)->nullable()->index();
+            $table->string('variable', 255)->nullable();
+            $table->string('cliente', 255)->nullable();
+            $table->string('cartera', 150)->nullable()->index();
+            $table->string('campana', 255)->nullable();
+            $table->string('codigo_estado', 30)->nullable();
+            $table->string('resultado', 150)->nullable();
+            $table->string('tipo_gestion', 150)->nullable()->index();
+            $table->text('observacion')->nullable();
+            $table->string('usuario', 100)->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('pagos', function (Blueprint $table): void {
             $table->id();
             $table->string('codigo')->index();

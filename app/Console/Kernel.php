@@ -20,8 +20,17 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/gestiones_sync.log'));
 
-        // Lunes a Sábado 19:00: sync + correo (IMPULSE + TEC CENTER dentro del mismo --send-mail)
-        $schedule->command('gestiones:sync-sp-hourly --send-mail')
+        // Cada hora, excepto las 19:00: el flujo diario sincroniza antes de enviar el correo.
+        $schedule->command('llamadas:sync-sp-hourly')
+            ->hourlyAt(0)
+            ->timezone($tz)
+            ->when(fn () => now()->timezone($tz)->hour !== 19)
+            ->name('llamadas_sync_hourly')
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/llamadas_sync.log'));
+
+        // Lunes a sábado 19:00: llamadas -> gestiones manuales -> un único correo.
+        $schedule->command('gestiones:sync-daily-report')
             ->cron('0 19 * * 1-6') // 19:00, Lun-Sab (más seguro que days())
             ->timezone($tz)
             ->name('gestiones_sync_daily_mail')

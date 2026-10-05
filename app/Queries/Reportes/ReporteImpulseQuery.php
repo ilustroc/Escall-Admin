@@ -20,7 +20,13 @@ class ReporteImpulseQuery
         $managementType = "REPLACE(REPLACE(UPPER(TRIM(g.tipificacion)), CHAR(13), ''), CHAR(10), '')";
         $catalogType = "REPLACE(REPLACE(UPPER(TRIM(ti.tipificacion)), CHAR(13), ''), CHAR(10), '')";
 
-        $query = DB::table('gestiones as g')
+        $manual = DB::table('gestiones')
+            ->selectRaw("dni, telefono, status, tipificacion, observacion, monto_pago, fecha_pago, nombre, fecha_gestion, 'MANUAL' as procedencia_llamada");
+        $discador = DB::table('llamadas')
+            ->selectRaw("TRIM(documento) as dni, telefono, resultado as status, tipo_gestion as tipificacion, observacion, 0 as monto_pago, NULL as fecha_pago, usuario as nombre, fecha_gestion, 'DISCADOR' as procedencia_llamada");
+
+        $query = DB::query()
+            ->fromSub($manual->unionAll($discador), 'g')
             ->join('data as d', 'd.dni', '=', 'g.dni')
             ->leftJoin('tipificaciones_impulsego as ti', DB::raw($managementType), '=', DB::raw($catalogType))
             ->where('d.cartera', 'like', '%IMPULSE%')
@@ -39,7 +45,8 @@ class ReporteImpulseQuery
                 g.observacion AS observacion,
                 g.monto_pago AS monto_promesa,
                 CASE WHEN g.monto_pago IS NULL OR g.monto_pago = 0 THEN 0 ELSE 1 END AS nro_cuotas,
-                g.fecha_pago AS fecha_promesa
+                g.fecha_pago AS fecha_promesa,
+                g.procedencia_llamada
             ")
             ->orderBy('g.fecha_gestion')
             ->orderBy('g.dni');

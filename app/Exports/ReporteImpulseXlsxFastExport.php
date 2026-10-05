@@ -128,7 +128,7 @@ class ReporteImpulseXlsxFastExport
                 $num($r->monto_promesa ?? null),   // MONTO PROMESA (num)
                 (int) ($r->nro_cuotas ?? 0),         // NRO CUOTAS (int)
                 $dmy($r->fecha_promesa ?? null),   // FECHA PROMESA (texto)
-                'Predictivo',                      // PROCEDENCIA LLAMADA
+                $txt($r->procedencia_llamada ?? 'MANUAL'), // PROCEDENCIA LLAMADA
             ]));
         }
 
