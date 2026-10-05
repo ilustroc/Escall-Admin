@@ -367,7 +367,7 @@ class ExpertisReportQuery
             ->selectRaw("COALESCE(NULLIF(ge.canal_asignacion, ''), 'ESCALL') as canal_asignacion")
             ->selectRaw('TRIM(ge.dni) as dni')
             ->selectRaw("COALESCE(NULLIF(ge.nombre_cliente, ''), ae.titular) as nombre_cliente")
-            ->select([
+            ->addSelect([
                 'ge.cartera', 'ge.asesor', 'ge.equipo', 'ge.telefono',
                 'ge.fecha_llamada', 'ge.hora', 'ge.fecha_hora', 'ge.campania',
                 'ge.nivel_1', 'ge.nivel_2', 'ge.fecha_compromiso', 'ge.monto', 'ge.observacion',
@@ -384,7 +384,7 @@ class ExpertisReportQuery
             ->selectRaw("'ESCALL' as canal_gestion, 'ESCALL' as canal_asignacion")
             ->selectRaw('TRIM(ll.documento) as dni')
             ->selectRaw("COALESCE(NULLIF(ll.cliente, ''), ae.titular) as nombre_cliente")
-            ->select([
+            ->addSelect([
                 'll.cartera',
             ])
             ->selectRaw("UPPER(COALESCE(NULLIF(TRIM(ll.usuario), ''), 'MARCADOR')) as asesor")
